@@ -217,7 +217,7 @@ de la hornacina ya aprobada.
 > mano. Solo cambia el color del enlucido (aquí blanco) y lo que hay en cada hueco.
 >
 > **Rigor histórico.** Castilla, hacia 1620. Ventanas sin vidrieras, con hojas y
-> postigos de madera; dentro, luz de candil de aceite o de vela, nunca de lámpara.
+> postigos de madera; dentro, luz de candil de aceite o de vela, nunca de quinqué ni de gas.
 > Hierro de forja negro y oxidado. No pueden aparecer: farolas, cristales, rótulos o
 > letreros, canalones o bajantes de chapa, cables, rejas o barandillas de fundición,
 > persianas, cortinas de encaje, ladrillo industrial, macetas, carteles. Sin personas
@@ -278,8 +278,9 @@ de la hornacina ya aprobada.
 > cal tienen que ser los de la imagen 3: es la misma calle, la misma noche y la misma
 > mano. Solo cambia el color del enlucido (aquí blanco) y lo que hay en cada hueco.
 >
-> **Rigor histórico.** Castilla, hacia 1620. Las velas de cera blanca se vendían
-> colgadas por el pabilo en manojos; las tiendas no tienen letreros ni escaparates.
+> **Rigor histórico.** Castilla, hacia 1620. En la cerería las velas cuelgan del
+> pabilo, como se hacían (vertiendo la cera sobre el pabilo colgado o a baños); las
+> tiendas no tienen letreros ni escaparates.
 > Ventanas sin vidrieras, con hojas y postigos de madera. Hierro de forja negro y
 > oxidado. No pueden aparecer: farolas, cristales, rótulos o letreros, canalones o
 > bajantes de chapa, cables, rejas o barandillas de fundición, persianas, ladrillo
