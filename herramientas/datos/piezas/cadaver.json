@@ -1,0 +1,47 @@
+{
+ "id": "cadaver",
+ "nombre": "El muerto",
+ "imagen": "res://arte/objetos/cadaver.png",
+ "tamano": [
+  220,
+  130
+ ],
+ "ancla": [
+  110.0,
+  73.0
+ ],
+ "fondo": true,
+ "huella": [
+  [
+   [
+    -0.85,
+    -0.5
+   ],
+   [
+    0.9,
+    -0.5
+   ],
+   [
+    0.9,
+    0.5
+   ],
+   [
+    -0.85,
+    0.5
+   ]
+  ]
+ ],
+ "recortes": [],
+ "maqueta": {
+  "archivo": "docs/arte/piezas/cadaver_maqueta.png",
+  "tamano": [
+   1536,
+   1024
+  ],
+  "escala": 5.58545,
+  "ancla": [
+   767.4,
+   556.74
+  ]
+ }
+}

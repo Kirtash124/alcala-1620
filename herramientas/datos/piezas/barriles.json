@@ -1,0 +1,70 @@
+{
+ "id": "barriles",
+ "nombre": "Dos barriles",
+ "imagen": "res://arte/piezas/barriles.png",
+ "tamano": [
+  118,
+  171
+ ],
+ "ancla": [
+  76.2,
+  167.3
+ ],
+ "fondo": false,
+ "huella": [
+  [
+   [
+    -1.35,
+    -0.9
+   ],
+   [
+    0.1,
+    -0.9
+   ],
+   [
+    0.1,
+    0.1
+   ],
+   [
+    -1.35,
+    0.1
+   ]
+  ]
+ ],
+ "recortes": [
+  {
+   "poligono": [
+    [
+     0.0,
+     4.0
+    ],
+    [
+     118.0,
+     4.0
+    ],
+    [
+     118.0,
+     166.0
+    ],
+    [
+     0.0,
+     166.0
+    ]
+   ],
+   "base": 174.5
+  }
+ ],
+ "maqueta": {
+  "archivo": "docs/arte/piezas/barriles_maqueta.png",
+  "luz": "docs/arte/piezas/barriles_luz.png",
+  "tamano": [
+   1024,
+   1536
+  ],
+  "escala": 7.63661,
+  "ancla": [
+   643.13,
+   1392.54
+  ]
+ }
+}
