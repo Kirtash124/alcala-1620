@@ -10,11 +10,10 @@ Qué hace:
      ChatGPT a veces mueve o agranda un poco el dibujo) e informa de cuánto coincide.
   3. La pasa a la escala del juego y le pone la silueta exacta del render (incluidas
      las zonas que tapan las casas vecinas). Donde la pintura no cubra, deja el render.
-  4. Luz: por defecto se queda con la textura de la pintura y la luz del render
-     (--luz render). ChatGPT pinta cada pieza con su propia idea de la noche, más
-     clara y más cálida, y así todas las piezas y el suelo comparten la misma luna.
-     Las luces cálidas (velas, ventanas) se dejan como las pintó ChatGPT.
-     Con --luz pintura se respeta la luz de ChatGPT tal cual.
+  4. Luz: por defecto se respeta la pintura tal cual (--luz pintura; decisión de
+     Esteban con la casa de la hornacina). Con --luz render se queda con la textura
+     de la pintura y toma del render la luz y el color de conjunto, por si alguna
+     pieza se desvía demasiado de la noche de las demás.
   5. Guarda arte/piezas/<id>.png, copia la pintura original en
      arte/entrada/piezas/<id>_pintada.png y deja una imagen de comprobación en
      pruebas/salida/piezas/<id>_comprobacion.png. El render sin pintar está siempre en
@@ -119,8 +118,8 @@ def main():
     args.add_argument("--solo-comprobar", action="store_true", help="no sustituye la pieza del juego")
     args.add_argument("--tolerancia", type=float, default=90.0, help="tolerancia del color de fondo")
     args.add_argument("--forzar", action="store_true", help="sustituir aunque la coincidencia sea baja")
-    args.add_argument("--luz", choices=("render", "pintura"), default="render",
-                      help="render: textura de la pintura con la luz del render (por defecto); pintura: tal cual")
+    args.add_argument("--luz", choices=("pintura", "render"), default="pintura",
+                      help="pintura: tal cual (por defecto); render: textura de la pintura con la luz del render")
     a = args.parse_args()
 
     ficha = json.loads((DIR_FICHAS / f"{a.pieza}.json").read_text(encoding="utf-8"))
