@@ -27,6 +27,7 @@ pantalla), y hacia la calle (abajo a la izquierda), z arriba. Ver isometria.py.
 import argparse
 import json
 import math
+import shutil
 import sys
 import time
 from dataclasses import dataclass, field
@@ -537,10 +538,19 @@ def renderizar_pieza(pieza, objetos, siluetas, ilum, muestras, temporal, recorta
     ancla_m = ((cw - ancho * s) / 2 + ancla[0] * s, (ch - alto * s) / 2 + ancla[1] * s)
 
     if renderizar:
-        # Pieza para el juego.
+        # Pieza para el juego. El render queda siempre en la carpeta de fichas; al juego
+        # solo pasa si la pieza no está ya repintada (si lo está, hay que volver a
+        # pasar procesar_pieza.py con la pintura guardada en arte/entrada/piezas/).
         ilum.modo("noche")
         BL.encuadrar(ancho, alto, ancla, 1.0, origen)
-        BL.renderizar(DIR_PIEZAS / f"{pieza.id}.png", muestras)
+        render = DIR_FICHAS / f"{pieza.id}_render.png"
+        BL.renderizar(render, muestras)
+        pintada = RAIZ / "arte/entrada/piezas" / f"{pieza.id}_pintada.png"
+        if pintada.exists():
+            print(f"  {pieza.id} está repintada: python3 herramientas/procesar_pieza.py {pieza.id} "
+                  f"{pintada.relative_to(RAIZ)}", flush=True)
+        else:
+            shutil.copy(render, DIR_PIEZAS / f"{pieza.id}.png")
         # Estudio de luz y maqueta de forma a tamaño de ChatGPT.
         BL.encuadrar(cw, ch, ancla_m, s, origen)
         BL.renderizar(temporal / f"{pieza.id}_luz.png", max(32, int(muestras * 0.75)))
