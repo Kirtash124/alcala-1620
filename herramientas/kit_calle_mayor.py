@@ -189,7 +189,9 @@ def construir_casa(casa: Casa, vecina_derecha):
     cal = f"cal_{casa.tono}"
     luces = []
 
-    # Suelo del soportal: losas y bordillo hacia la calle.
+    # Suelo del soportal: losas sobre un lecho de mortero (por las juntas se ve el
+    # mortero, no la tierra de la calle) y bordillo hacia la calle.
+    m.caja(X, FONDO - 0.02, -0.08, X + W, 0.44, -0.012, "mortero")
     MD.losas(m, X, X + W, FONDO - 0.02, 0.2)
     x = X - m.azar(0, 0.6)
     while x < X + W:
