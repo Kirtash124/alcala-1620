@@ -62,6 +62,8 @@ arte y textos provisionales, para comprobar que todo el sistema funciona.
 
 ## Guías
 
+- [Primera prueba de marcha del Pesquisidor](docs/ANIMAR_PESQUISIDOR.md)
+
 - [Guía de arte con ChatGPT](docs/GUIA_ARTE.md)
 - [Escribir los diálogos en Ink](docs/ESCRIBIR_EN_INK.md)
 - [Montar un escenario nuevo](docs/MONTAR_UN_LUGAR.md)

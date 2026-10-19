@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <Compile Include="../../codigo/Reglas/**/*.cs" Link="Reglas/%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="../../codigo/Juego/CicloMarcha.cs" Link="Animacion/CicloMarcha.cs" />
   </ItemGroup>
 
   <ItemGroup>
