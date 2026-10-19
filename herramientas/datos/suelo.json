@@ -1,0 +1,49 @@
+{
+ "lienzo": [
+  3200,
+  1800
+ ],
+ "escala": 0.9,
+ "teselas": [
+  {
+   "id": "suelo_1",
+   "rect": [
+    0.0,
+    0.0,
+    1706.67,
+    1137.78
+   ],
+   "luz": "docs/arte/suelo/suelo_1_luz.png"
+  },
+  {
+   "id": "suelo_2",
+   "rect": [
+    1493.33,
+    0.0,
+    1706.67,
+    1137.78
+   ],
+   "luz": "docs/arte/suelo/suelo_2_luz.png"
+  },
+  {
+   "id": "suelo_3",
+   "rect": [
+    0.0,
+    662.22,
+    1706.67,
+    1137.78
+   ],
+   "luz": "docs/arte/suelo/suelo_3_luz.png"
+  },
+  {
+   "id": "suelo_4",
+   "rect": [
+    1493.33,
+    662.22,
+    1706.67,
+    1137.78
+   ],
+   "luz": "docs/arte/suelo/suelo_4_luz.png"
+  }
+ ]
+}

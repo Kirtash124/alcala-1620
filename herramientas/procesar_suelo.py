@@ -98,27 +98,32 @@ def ganancias(capas, rects):
     return np.exp(g)
 
 
-def pesos(rects, lienzo):
-    """Reparto del lienzo entre los trozos: cada uno manda en su mitad del solape,
-    con un fundido de TRANSICION px en el medio."""
+def pesos(rects, lienzo, presentes):
+    """Reparto del lienzo entre los trozos pintados: en cada solape manda el trozo en
+    cuyo interior está más hondo el píxel (distancia a sus bordes interiores, los que
+    no son el borde del lienzo), con un fundido suave de unos TRANSICION px. Si falta un
+    trozo, los demás cubren lo suyo."""
     w, h = lienzo
-    xs = sorted({r[0] for r in rects})
-    ys = sorted({r[1] for r in rects})
-    u = np.arange(w)[None, :]
-    v = np.arange(h)[:, None]
-
-    def corte(posiciones, tam, coord, idx):
-        if len(posiciones) == 1:
-            return np.ones_like(coord, dtype=np.float32)
-        medio = (posiciones[0] + tam + posiciones[1]) / 2       # mitad del solape
-        primero = np.clip((medio - coord) / TRANSICION + 0.5, 0, 1)
-        return primero if idx == 0 else 1 - primero
-    salida = []
-    for r in rects:
-        wx = corte(xs, r[2], u, xs.index(r[0]))
-        wy = corte(ys, r[3], v, ys.index(r[1]))
-        salida.append((wx * wy).astype(np.float32))
-    return salida
+    u = np.arange(w, dtype=np.float32)[None, :]
+    v = np.arange(h, dtype=np.float32)[:, None]
+    hondos = []
+    for r, hay in zip(rects, presentes):
+        x0, y0, x1, y1 = r[0], r[1], r[0] + r[2], r[1] + r[3]
+        dentro = (u >= x0) & (u < x1) & (v >= y0) & (v < y1)
+        d = np.full((h, w), 1e6, np.float32)
+        if x0 > 0.5:
+            d = np.minimum(d, u - x0)
+        if x1 < w - 0.5:
+            d = np.minimum(d, x1 - u)
+        if y0 > 0.5:
+            d = np.minimum(d, v - y0)
+        if y1 < h - 0.5:
+            d = np.minimum(d, y1 - v)
+        d = np.minimum(d, 4000.0)
+        hondos.append(np.where(dentro & hay, d, -1e6).astype(np.float32))
+    maximo = np.max(np.stack(hondos), axis=0)
+    t = TRANSICION / 4
+    return [np.where(hd > -1e5, np.exp(np.clip((hd - maximo) / t, -30, 0)), 0.0).astype(np.float32) for hd in hondos]
 
 
 def main():
@@ -152,8 +157,9 @@ def main():
         capas.append(al_lienzo(img, t["rect"], escala, lienzo))
 
     g = ganancias(capas, rects)
-    reparto = pesos(rects, lienzo)
+    reparto = pesos(rects, lienzo, [c is not None for c in capas])
     suma = np.zeros(lienzo[::-1], np.float32)
+    total = np.zeros(lienzo[::-1], np.float32)
     color = np.zeros(lienzo[::-1] + (3,), np.float32)
     for capa, gan, w in zip(capas, g, reparto):
         if capa is None:
@@ -161,12 +167,13 @@ def main():
         peso = w * capa[..., 3]
         color += capa[..., :3] * gan * peso[..., None]
         suma += peso
-    hay = suma > 1e-4
+        total += w
+    hay = suma > 1e-6
     final = render.copy()
     final[hay] = color[hay] / suma[hay, None]
-    # Al borde de lo pintado (junto a las casas o a un trozo sin pintar), fundido con el render.
-    borde = np.clip(suma, 0, 1)[..., None]
-    final = final * borde + render * (1 - borde)
+    # Donde la pintura no cubre del todo (junto a las casas), fundido con el render.
+    cubre = np.where(total > 1e-6, suma / np.maximum(total, 1e-6), 0)[..., None]
+    final = final * cubre + render * (1 - cubre)
     salida = Image.fromarray((np.clip(final, 0, 1) * 255).astype(np.uint8))
     salida.save(RAIZ / "arte/fondos/calle_mayor_suelo.png", optimize=True)
     print("Ganancias por trozo (R, G, B): " + "; ".join(
