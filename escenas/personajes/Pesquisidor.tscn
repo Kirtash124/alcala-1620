@@ -1,0 +1,20 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://codigo/Juego/Personaje.cs" id="1"]
+[ext_resource type="Texture2D" path="res://arte/personajes/pesquisidor_se.png" id="2"]
+[ext_resource type="Texture2D" path="res://arte/personajes/pesquisidor_ne.png" id="3"]
+[ext_resource type="Texture2D" path="res://arte/objetos/sombra.png" id="4"]
+
+[node name="Pesquisidor" type="Node2D"]
+script = ExtResource("1")
+Frente = ExtResource("2")
+Espalda = ExtResource("3")
+
+[node name="Sombra" type="Sprite2D" parent="."]
+position = Vector2(0, -2)
+texture = ExtResource("4")
+
+[node name="Cuerpo" type="Sprite2D" parent="."]
+texture = ExtResource("2")
+centered = false
+offset = Vector2(-60, -191)

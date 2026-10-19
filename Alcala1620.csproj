@@ -1,0 +1,23 @@
+<Project Sdk="Godot.NET.Sdk/4.7.1">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RootNamespace>Alcala</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <!-- Los avisos del compilador se tratan como errores: un aviso ignorado hoy es un fallo mañana. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- El código de GodotInk no es nuestro: no le exigimos nuestras reglas. -->
+    <NoWarn>$(NoWarn);CS8618;CS8625;CS8600;CS8602;CS8603;CS8604;CS1591</NoWarn>
+    <!-- GodotInk oculta Resource.ResetState(), que Godot añadió después; es inofensivo. -->
+    <WarningsNotAsErrors>CS0108</WarningsNotAsErrors>
+  </PropertyGroup>
+
+  <!-- Las pruebas unitarias viven en su propio proyecto y no deben compilarse dentro del juego. -->
+  <ItemGroup>
+    <Compile Remove="pruebas/Reglas.Pruebas/**" />
+    <Compile Remove="herramientas/**" />
+  </ItemGroup>
+
+  <Import Project="addons/GodotInk/GodotInk.props" />
+</Project>

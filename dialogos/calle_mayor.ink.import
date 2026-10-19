@@ -1,0 +1,16 @@
+[remap]
+
+importer="ink"
+type="Resource"
+uid="uid://c35l61820ueye"
+path="res://.godot/imported/calle_mayor.ink-3014ebe91bc99c9bac2713026b10831f.res"
+
+[deps]
+
+source_file="res://dialogos/calle_mayor.ink"
+dest_files=["res://.godot/imported/calle_mayor.ink-3014ebe91bc99c9bac2713026b10831f.res"]
+
+[params]
+
+is_main_file=false
+compress=true

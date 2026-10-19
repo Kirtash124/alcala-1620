@@ -1,0 +1,25 @@
+# Godot
+.godot/
+.import/
+export/
+*.translation
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+.idea/
+
+# Capturas y salidas de pruebas
+pruebas/salida/
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python
+__pycache__/
+*.pyc
