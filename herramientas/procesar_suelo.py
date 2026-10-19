@@ -7,11 +7,15 @@
 El suelo mide 3200 × 1800 y ChatGPT no pinta tanto de una vez, así que se pide en
 cuatro trozos con solape (docs/arte/suelo/suelo_N_luz.png; ver docs/arte/suelo/README.md).
 
-1. A cada trozo le quita el magenta (donde van las casas) y lo encaja sobre su silueta.
+1. A cada trozo le quita el magenta (donde van las casas), lo encaja sobre su silueta y
+   limpia la pelusa morada que ChatGPT deja junto a las casas.
 2. Iguala el color entre trozos: con lo que coincide en los solapes calcula, por canal,
    una ganancia para cada trozo, para que ninguno quede más claro o más cálido que su
    vecino.
-3. Funde los trozos con una transición suave en mitad de cada solape.
+3. Los cose por una costura de coste mínimo dentro de cada solape: el camino por donde
+   los dos trozos más se parecen (como en el «image quilting» de Efros y Freeman, 2001),
+   con un fundido corto. Un fundido ancho dejaba fantasmas, porque ChatGPT no pinta
+   igual el mismo charco en dos trozos.
 4. Donde no hay pintura (un trozo aún sin pintar, o bajo las casas) queda el render
    (herramientas/datos/suelo_render.png).
 
@@ -25,14 +29,14 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import binary_dilation, distance_transform_edt, gaussian_filter
 
 from procesar_pieza import encajar, transformar
 
 RAIZ = Path(__file__).resolve().parent.parent
 DATOS = RAIZ / "herramientas/datos"
 ENTRADA = RAIZ / "arte/entrada/suelo"
-TRANSICION = 140.0     # px del juego que dura el fundido entre dos trozos
+FUNDIDO = 5.0          # sigma, en px del juego, del fundido a lo largo de la costura
 
 
 def quitar_magenta(img):
@@ -48,13 +52,35 @@ def quitar_magenta(img):
     return Image.fromarray(np.dstack([rgb, alfa * 255]).astype(np.uint8), "RGBA")
 
 
+def limpiar_bordes(pint, mascara):
+    """ChatGPT deja junto al magenta una franja de unos 5 px con pelusa morada que no es
+    magenta puro (quitar_magenta no la borra entera) y en el juego se ve como un ribete
+    a lo largo de las casas. Esos píxeles se rellenan con el color de la pintura limpia
+    más cercana, y la silueta pasa a ser la de la máscara del render (exacta), ensanchada
+    3 px bajo las casas para que no quede ninguna rendija entre suelo y casa."""
+    px = np.asarray(pint).astype(np.float32)
+    rgb, alfa = px[..., :3], px[..., 3] / 255.0
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    # En el barro y la piedra el verde nunca queda por debajo del rojo y el azul a la
+    # vez; en la pelusa morada, sí.
+    sucio = binary_dilation((np.minimum(r, b) - g > 10) | (alfa < 0.98), iterations=1)
+    limpio = mascara & ~sucio
+    zona = binary_dilation(mascara, iterations=3)
+    _, (iy, ix) = distance_transform_edt(~limpio, return_indices=True)
+    relleno = np.where((zona & ~limpio)[..., None], rgb[iy, ix], rgb)
+    salida = np.dstack([relleno, zona * 255.0]).astype(np.uint8)
+    print(f"  bordes: {int((zona & ~limpio).sum())} px rellenados")
+    return Image.fromarray(salida, "RGBA")
+
+
 def cargar_pintura(ruta, mascara):
     pint = quitar_magenta(Image.open(ruta))
     if pint.size != mascara.shape[::-1]:
         pint = pint.resize(mascara.shape[::-1], Image.LANCZOS)
         print(f"  aviso: {ruta.name} venía a otro tamaño; se ajusta")
     puntos, escala, dx, dy = encajar(pint, mascara)
-    return transformar(pint, escala, dx, dy, mascara.shape[::-1]), puntos, (escala, dx, dy)
+    pint = limpiar_bordes(transformar(pint, escala, dx, dy, mascara.shape[::-1]), mascara)
+    return pint, puntos, (escala, dx, dy)
 
 
 def al_lienzo(img, rect, escala, lienzo):
@@ -98,32 +124,81 @@ def ganancias(capas, rects):
     return np.exp(g)
 
 
-def pesos(rects, lienzo, presentes):
-    """Reparto del lienzo entre los trozos pintados: en cada solape manda el trozo en
-    cuyo interior está más hondo el píxel (distancia a sus bordes interiores, los que
-    no son el borde del lienzo), con un fundido suave de unos TRANSICION px. Si falta un
-    trozo, los demás cubren lo suyo."""
+def camino_minimo(coste):
+    """Costura de arriba abajo de coste mínimo (programación dinámica): la columna de
+    cada fila, moviéndose como mucho un píxel a un lado entre fila y fila."""
+    h, w = coste.shape
+    acum = coste.astype(np.float64).copy()
+    for y in range(1, h):
+        prev = acum[y - 1]
+        acum[y] += np.minimum(np.minimum(np.r_[np.inf, prev[:-1]], prev), np.r_[prev[1:], np.inf])
+    camino = np.empty(h, int)
+    camino[-1] = int(np.argmin(acum[-1]))
+    for y in range(h - 2, -1, -1):
+        x = camino[y + 1]
+        lo = max(0, x - 1)
+        camino[y] = lo + int(np.argmin(acum[y, lo:x + 2]))
+    return camino
+
+
+def coser(capas, rects, lienzo):
+    """Une los trozos pintados de uno en uno, empezando por el que más calle pinta. En el
+    solape de cada trozo nuevo con lo ya cosido busca la costura por donde los dos se
+    parecen más (bajo las casas no cuesta nada, porque no se ve) y reparte a cada lado.
+    Devuelve el color y la cobertura de la pintura en el lienzo."""
     w, h = lienzo
-    u = np.arange(w, dtype=np.float32)[None, :]
-    v = np.arange(h, dtype=np.float32)[:, None]
-    hondos = []
-    for r, hay in zip(rects, presentes):
-        x0, y0, x1, y1 = r[0], r[1], r[0] + r[2], r[1] + r[3]
-        dentro = (u >= x0) & (u < x1) & (v >= y0) & (v < y1)
-        d = np.full((h, w), 1e6, np.float32)
-        if x0 > 0.5:
-            d = np.minimum(d, u - x0)
-        if x1 < w - 0.5:
-            d = np.minimum(d, x1 - u)
-        if y0 > 0.5:
-            d = np.minimum(d, v - y0)
-        if y1 < h - 0.5:
-            d = np.minimum(d, y1 - v)
-        d = np.minimum(d, 4000.0)
-        hondos.append(np.where(dentro & hay, d, -1e6).astype(np.float32))
-    maximo = np.max(np.stack(hondos), axis=0)
-    t = TRANSICION / 4
-    return [np.where(hd > -1e5, np.exp(np.clip((hd - maximo) / t, -30, 0)), 0.0).astype(np.float32) for hd in hondos]
+    color = np.zeros((h, w, 3), np.float32)
+    alfa = np.zeros((h, w), np.float32)
+    cubierto = np.zeros((h, w), bool)
+    orden = sorted((i for i, c in enumerate(capas) if c is not None), key=lambda i: -capas[i][..., 3].sum())
+    margen = int(3 * FUNDIDO) + 2
+    for i in orden:
+        capa, r = capas[i], rects[i]
+        # Rectángulo del trozo, sin los 2 px del borde (allí el remuestreo lo deja a medias).
+        x0, y0 = int(np.ceil(r[0])) + (2 if r[0] > 0.5 else 0), int(np.ceil(r[1])) + (2 if r[1] > 0.5 else 0)
+        x1 = int(np.floor(r[0] + r[2])) - (2 if r[0] + r[2] < w - 0.5 else 0)
+        y1 = int(np.floor(r[1] + r[3])) - (2 if r[1] + r[3] < h - 0.5 else 0)
+        suyo = np.zeros((h, w), bool)
+        suyo[y0:y1, x0:x1] = True
+        lado = suyo & ~cubierto
+        solape = suyo & cubierto
+        if solape.any():
+            ys, xs = np.where(solape)
+            oy0, oy1, ox0, ox1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+            caja = (slice(oy0, oy1), slice(ox0, ox1))
+            a = gaussian_filter(capa[caja][..., :3], (1.5, 1.5, 0))
+            b = gaussian_filter(color[caja], (1.5, 1.5, 0))
+            ambos = (capa[caja][..., 3] > 0.5) & (alfa[caja] > 0.5)
+            coste = np.where(ambos, np.abs(a - b).sum(-1), 0.0) + 1e-3
+            coste[~solape[caja]] = 1e3
+            vertical = (oy1 - oy0) >= (ox1 - ox0)
+            if not vertical:
+                coste = coste.T
+            # Que la costura no pegue a los bordes del solape: el fundido necesita sitio.
+            coste[:, :margen] += 1e3
+            coste[:, -margen:] += 1e3
+            camino = camino_minimo(coste)
+            idx = np.arange(coste.shape[1])[None, :]
+            # Lado del trozo nuevo: hacia donde cae su centro respecto al solape.
+            if vertical:
+                nuevo_despues = r[0] + r[2] / 2 > (ox0 + ox1) / 2
+            else:
+                nuevo_despues = r[1] + r[3] / 2 > (oy0 + oy1) / 2
+            parte = idx > camino[:, None] if nuevo_despues else idx <= camino[:, None]
+            lado[caja] |= (parte if vertical else parte.T) & solape[caja]
+            print(f"  costura {'vertical' if vertical else 'horizontal'} en el solape "
+                  f"x {ox0}-{ox1}, y {oy0}-{oy1}; diferencia media en ella {coste[np.arange(len(camino)), camino].mean():.3f}")
+        # Fundido corto a lo largo de la costura; donde solo pinta uno, manda ese.
+        peso = gaussian_filter(lado.astype(np.float32), FUNDIDO)
+        peso = np.where(suyo & ~cubierto, 1.0, np.where(cubierto & ~suyo, 0.0, peso))
+        peso = np.where(suyo | cubierto, peso, 0.0)
+        wn, wv = peso * capa[..., 3], (1 - peso) * alfa
+        total = wn + wv
+        nuevo = (capa[..., :3] * wn[..., None] + color * wv[..., None]) / np.maximum(total, 1e-6)[..., None]
+        color = np.where((total > 1e-6)[..., None], nuevo, color)
+        alfa = np.where(suyo, np.maximum(alfa, capa[..., 3]), alfa)
+        cubierto |= suyo
+    return color, alfa
 
 
 def main():
@@ -157,23 +232,12 @@ def main():
         capas.append(al_lienzo(img, t["rect"], escala, lienzo))
 
     g = ganancias(capas, rects)
-    reparto = pesos(rects, lienzo, [c is not None for c in capas])
-    suma = np.zeros(lienzo[::-1], np.float32)
-    total = np.zeros(lienzo[::-1], np.float32)
-    color = np.zeros(lienzo[::-1] + (3,), np.float32)
-    for capa, gan, w in zip(capas, g, reparto):
-        if capa is None:
-            continue
-        peso = w * capa[..., 3]
-        color += capa[..., :3] * gan * peso[..., None]
-        suma += peso
-        total += w
-    hay = suma > 1e-6
-    final = render.copy()
-    final[hay] = color[hay] / suma[hay, None]
-    # Donde la pintura no cubre del todo (junto a las casas), fundido con el render.
-    cubre = np.where(total > 1e-6, suma / np.maximum(total, 1e-6), 0)[..., None]
-    final = final * cubre + render * (1 - cubre)
+    for i, capa in enumerate(capas):
+        if capa is not None:
+            capa[..., :3] = np.clip(capa[..., :3] * g[i], 0, 1)
+    color, alfa = coser(capas, rects, lienzo)
+    # Donde no hay pintura (bajo las casas o en un trozo sin pintar) queda el render.
+    final = color * alfa[..., None] + render * (1 - alfa[..., None])
     salida = Image.fromarray((np.clip(final, 0, 1) * 255).astype(np.uint8))
     salida.save(RAIZ / "arte/fondos/calle_mayor_suelo.png", optimize=True)
     print("Ganancias por trozo (R, G, B): " + "; ".join(
