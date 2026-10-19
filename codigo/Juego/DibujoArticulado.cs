@@ -87,27 +87,16 @@ public partial class DibujoArticulado : Node2D
         Vector2 dirLocal = new(direccion.X * Scale.X, direccion.Y);
         float ancho = textura!.GetWidth();
         float alto = textura.GetHeight();
-        float separacion = ancho * (personaje.DeEspaldas ? 0.45f : 0.51f);
-        float cadera = alto * (personaje.DeEspaldas ? 0.67f : 0.62f);
         float respiracion = MathF.Sin(tiempo * 2.1f) * 0.003f;
-        float balanceo = MathF.Sin(Fase * MathF.Tau) * intensidad * 0.45f;
-        float subida = -MathF.Abs(MathF.Sin(Fase * MathF.Tau)) * intensidad;
+        var gesto = new GestoMarcha(new System.Numerics.Vector2(ancho, alto), personaje.DeEspaldas,
+            new System.Numerics.Vector2(dirLocal.X, dirLocal.Y), Fase, intensidad, LongitudCiclo, AlturaPaso);
 
         for (int i = 0; i < baseVertices.Length; i++)
         {
             Vector2 p = baseVertices[i];
-            bool piernaIzquierda = p.X < separacion;
-            float suela = alto * (personaje.DeEspaldas
-                ? (piernaIzquierda ? 0.90f : 0.97f)
-                : (piernaIzquierda ? 0.98f : 0.87f));
-            float pesoPie = Mathf.Clamp((p.Y - cadera) / (suela - cadera - 9f), 0, 1);
-            float fasePie = Fase + (piernaIzquierda ? 0 : 0.5f);
-            CicloMarcha.Pie pie = CicloMarcha.Evaluar(fasePie, LongitudCiclo, AlturaPaso);
-            Vector2 paso = dirLocal * pie.Avance + Vector2.Up * pie.Elevacion;
-            float torso = 1f - pesoPie;
-            Vector2 gesto = new(balanceo * torso,
-                subida * torso - MathF.Max(0, cadera - p.Y) * respiracion * (1f - intensidad));
-            vertices[i] = p + paso * pesoPie * intensidad + gesto;
+            System.Numerics.Vector2 movido = gesto.Transformar(new System.Numerics.Vector2(p.X, p.Y));
+            float aliento = -MathF.Max(0, alto * 0.62f - p.Y) * respiracion * (1f - intensidad);
+            vertices[i] = new Vector2(movido.X, movido.Y + aliento);
         }
         malla.Polygon = vertices;
     }

@@ -25,6 +25,8 @@ public partial class PruebaAnimacion : Node
             // Cadencia de paseo: el ciclo recorre 64 píxeles de suelo. La velocidad
             // original del prototipo (240) produciría más de tres ciclos por segundo.
             juego.Jugador.Velocidad = 105f;
+            if (OS.GetCmdlineUserArgs().Contains("--detalle"))
+                juego.GetNode<Camera2D>("Camara").Zoom = new Vector2(2, 2);
             var interfaz = new CanvasLayer { Layer = 50 };
             AddChild(interfaz);
             rotulo = new Label { Position = new Vector2(24, 80), MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -78,11 +80,10 @@ public partial class PruebaAnimacion : Node
             if (capturas is not null && DisplayServer.GetName() != "headless")
             {
                 DirAccess.MakeDirRecursiveAbsolute(capturas);
-                for (int f = 0; f < 12; f++)
+                for (int f = 0; f < 24; f++)
                 {
                     await ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
                     GetViewport().GetTexture().GetImage().SavePng($"{capturas}/marcha_{numero++:D3}.png");
-                    await ToSignal(GetTree().CreateTimer(1.0 / 12), SceneTreeTimer.SignalName.Timeout);
                 }
             }
             await Esperar(() => llego, 30);
