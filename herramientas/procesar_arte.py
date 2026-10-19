@@ -12,6 +12,10 @@
     python3 herramientas/procesar_arte.py poses entrada.png arte/personajes/x
     (escribe x_se.png y x_ne.png con la misma escala)
 
+  --altura es el alto total, sombrero incluido, así que depende del sombrero: lo que
+  tiene que salir igual en todos es el cuerpo. El pesquisidor, con copa alta, va a 1,97
+  (cuerpo de unos 1,70 m, como con el primer sombrero a 1,92).
+
 Si la imagen ya trae transparencia, se respeta. Si no, se toma como fondo el color
 de las esquinas y se borra todo lo que se le parezca y esté conectado con ellas.
 """
