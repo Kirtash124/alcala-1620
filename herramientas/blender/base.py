@@ -495,3 +495,32 @@ def nube(nombre, centros, radios, angulos, material, desorden=0.0, segmentos=7, 
     ob = bpy.data.objects.new(nombre, me)
     bpy.context.scene.collection.objects.link(ob)
     return ob
+
+
+def campo_alturas(nombre, x0, y0, paso, alturas, material, mascara=None):
+    """Superficie de alturas sobre una rejilla regular (nuestras coordenadas).
+    alturas: matriz (filas = y, columnas = x) con la z de cada vértice. Con
+    `mascara` (misma forma, booleana) solo se crean las caras cuyos cuatro vértices
+    están dentro."""
+    ny, nx = alturas.shape
+    xs = x0 + paso * np.arange(nx)
+    ys = y0 + paso * np.arange(ny)
+    X, Y = np.meshgrid(xs, ys)
+    v = np.stack([X.ravel(), -Y.ravel(), alturas.ravel()], 1)
+    idx = np.arange(nx * ny).reshape(ny, nx)
+    a, b, c, d = idx[:-1, :-1], idx[:-1, 1:], idx[1:, 1:], idx[1:, :-1]
+    caras = np.stack([a.ravel(), d.ravel(), c.ravel(), b.ravel()], 1)
+    if mascara is not None:
+        m = mascara.ravel()
+        caras = caras[m[caras].all(axis=1)]
+    usados = np.unique(caras)
+    nuevo = -np.ones(nx * ny, dtype=np.int64)
+    nuevo[usados] = np.arange(len(usados))
+    me = bpy.data.meshes.new(nombre)
+    me.from_pydata(v[usados].tolist(), [], nuevo[caras].tolist())
+    me.polygons.foreach_set("use_smooth", [True] * len(me.polygons))
+    me.materials.append(material)
+    me.update()
+    ob = bpy.data.objects.new(nombre, me)
+    bpy.context.scene.collection.objects.link(ob)
+    return ob

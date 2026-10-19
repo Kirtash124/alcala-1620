@@ -367,16 +367,70 @@ def construir_suelo(detalle=True):
                 m.caja(x + 0.008, ya, -0.1, xb - 0.008, yb, -0.012, "losa", bisel=0.01, desorden=0.004,
                        giro=BL.Matrix.Rotation(BL.math.radians(4 * lado), 4, "X"))
             x = xb
-    # Charcos en el canalillo y alguno entre las piedras.
-    for xc, yc, rx, ry in ((2.4, 3.8, 0.9, 0.14), (7.9, 3.8, 0.5, 0.12), (15.6, 3.79, 1.3, 0.15),
-                           (21.2, 3.81, 0.7, 0.13), (5.2, 5.6, 0.45, 0.3), (17.8, 1.6, 0.35, 0.22)):
-        pts = []
-        for k in range(18):
-            a = 2 * BL.math.pi * k / 18
-            r = 1 + 0.18 * BL.math.sin(3 * a + xc) + 0.1 * BL.math.cos(5 * a)
-            pts.append((xc + rx * r * BL.math.cos(a), yc + ry * r * BL.math.sin(a), 0.004 if yc < 3.5 or yc > 4.1 else -0.008))
-        m.poligono(pts, "agua")
-    return [m.objeto(MAT.obtener, "suelo")] + ([cantos] if cantos else [])
+    extras = []
+    if detalle:
+        extras = barro_y_charcos(m)
+    return [m.objeto(MAT.obtener, "suelo")] + ([cantos] if cantos else []) + extras
+
+
+RODERAS = (5.93, 7.17)    # y de las rodadas de los carros (el del carro aparcado)
+
+
+def barro_y_charcos(m, paso=0.07, semilla=7):
+    """Barro que entierra las piedras a manchas (más junto al canalillo y en las
+    roderas), charcos donde queda hondo, estiércol y paja. Devuelve los objetos."""
+    from scipy.ndimage import gaussian_filter
+    rng = np.random.default_rng(semilla)
+    x0, x1, y0, y1 = -14.0, 36.0, -9.0, 23.0
+    nx, ny = int((x1 - x0) / paso) + 1, int((y1 - y0) / paso) + 1
+    X, Y = np.meshgrid(x0 + paso * np.arange(nx), y0 + paso * np.arange(ny))
+
+    def ruido(sigma_m):
+        r = gaussian_filter(rng.standard_normal((ny, nx)), sigma_m / paso)
+        return (r - r.mean()) / r.std()
+    grande, medio, fino = ruido(1.3), ruido(0.35), ruido(0.07)
+    canal = np.exp(-((Y - (CANAL[0] + CANAL[1]) / 2) / 0.7) ** 2)
+    roderas = sum(np.exp(-((Y - yr) / 0.24) ** 2) for yr in RODERAS)
+    surco = sum(np.exp(-((Y - yr) / 0.07) ** 2) for yr in RODERAS)
+    cantidad = 0.55 * grande + 0.35 * medio + 0.1 * fino + 0.9 * canal + 0.8 * roderas * (0.6 + 0.4 * (medio > -0.3))
+    barro = np.clip((cantidad - 0.35) / 0.6, 0, 1)
+    # Nada de barro bajo las casas ni pegado al bordillo (lo recortaría).
+    casas = ((X > -0.4) & (X < 24.4) & (Y < 0.8)).astype(float)
+    barro *= 1 - np.clip(gaussian_filter(casas, 0.15 / paso) * 2, 0, 1)
+    z = -0.022 + 0.072 * barro ** 1.3 + 0.004 * fino - 0.02 * surco * barro
+    # Charcos: donde el terreno queda hondo o el agua corre (canalillo, roderas).
+    charco = 0.6 * ruido(0.5) + 0.4 * medio + 0.9 * canal + 0.7 * surco - 1.6 * gaussian_filter(casas, 0.3 / paso)
+    agua = charco > 1.2
+    nivel = 0.011
+    hondo = gaussian_filter(agua.astype(float), 0.06 / paso) > 0.2
+    z = np.where(hondo, np.minimum(z, nivel - 0.008), z)
+    sx = (X - Y) * AX + SUELO_OX
+    sy = (X + Y) * AY + SUELO_OY
+    dentro = (sx > -60) & (sx < SUELO_ANCHO + 60) & (sy > -60) & (sy < SUELO_ALTO_PX + 60)
+    con_barro = gaussian_filter((barro > 0.02).astype(float), 1.0) > 0.01
+    objetos = [BL.campo_alturas("suelo_barro", x0, y0, paso, z, MAT.obtener("barro"), con_barro & dentro)]
+    olas = nivel + 0.0015 * fino
+    objetos.append(BL.campo_alturas("suelo_agua", x0, y0, paso, olas, MAT.obtener("agua"), agua & dentro))
+    print(f"  barro en el {con_barro[dentro].mean():.0%} de la calle, charcos en el {agua[dentro].mean():.1%}",
+          flush=True)
+    # Boñigas y paja suelta por la calle (hacia 1620 las calles eran de caballerías).
+    r = m.rng
+    for _ in range(16):
+        bx, by = r.uniform(-8, 30), r.uniform(1.4, 12)
+        for _k in range(r.randint(3, 6)):
+            m.esfera((bx + r.uniform(-0.12, 0.12), by + r.uniform(-0.1, 0.1), 0.02),
+                     (r.uniform(0.035, 0.06), r.uniform(0.03, 0.05), r.uniform(0.018, 0.03)), "bonigas", 8, 5,
+                     desorden=0.008)
+    for _ in range(26):
+        px, py = r.uniform(-8, 30), r.uniform(0.9, 14)
+        for _k in range(r.randint(8, 18)):
+            a = r.uniform(0, math.pi)
+            l = r.uniform(0.08, 0.26)
+            cx, cy = px + r.uniform(-0.3, 0.3), py + r.uniform(-0.25, 0.25)
+            m.barra((cx - l / 2 * math.cos(a), cy - l / 2 * math.sin(a), 0.03),
+                    (cx + l / 2 * math.cos(a), cy + l / 2 * math.sin(a), 0.03 + r.uniform(-0.01, 0.01)),
+                    0.006, 0.004, "paja")
+    return objetos
 
 
 def pintura_hornacina():
@@ -582,12 +636,51 @@ def renderizar_pieza(pieza, objetos, siluetas, ilum, muestras, temporal, recorta
     return ficha
 
 
-def renderizar_suelo(objetos, muestras):
+TESELA = (1536, 1024)      # tamaño de cada trozo del suelo para ChatGPT
+TESELA_ESCALA = 0.9        # cada trozo cubre 1707 × 1138 px del juego: 2 × 2 trozos con solape
+DIR_SUELO = RAIZ / "docs/arte/suelo"
+
+
+def teselas_suelo():
+    """Trozos del suelo (id, x, y, ancho, alto) en píxeles del lienzo del juego."""
+    w, h = TESELA[0] / TESELA_ESCALA, TESELA[1] / TESELA_ESCALA
+    salida = []
+    for j, y in enumerate((0.0, SUELO_ALTO_PX - h)):
+        for i, x in enumerate((0.0, SUELO_ANCHO - w)):
+            salida.append((f"suelo_{2 * j + i + 1}", round(x, 2), round(y, 2), round(w, 2), round(h, 2)))
+    return salida
+
+
+def renderizar_suelo(objetos, muestras, casas=(), temporal=None):
+    """Suelo entero para el juego y, además, los cuatro trozos para ChatGPT (con las
+    casas en magenta: lo que tapan no hace falta pintarlo). Si el suelo ya está
+    repintado, el render solo se guarda aparte y no se toca el del juego."""
+    DIR_SUELO.mkdir(parents=True, exist_ok=True)
     BL.solo_visibles(objetos)
     BL.encuadrar(SUELO_ANCHO, SUELO_ALTO_PX, (SUELO_OX, SUELO_OY), 1.0, (0.0, 0.0, 0.0))
-    ruta = RAIZ / "arte/fondos/calle_mayor_suelo.png"
-    BL.renderizar(ruta, muestras)
-    Image.open(ruta).convert("RGB").save(ruta, optimize=True)
+    render = RAIZ / "herramientas/datos/suelo_render.png"
+    BL.renderizar(render, muestras)
+    Image.open(render).convert("RGB").save(render, optimize=True)
+    pintado = sorted((RAIZ / "arte/entrada/suelo").glob("*_pintada.png"))
+    if pintado:
+        print("  el suelo está repintado: python3 herramientas/procesar_suelo.py", flush=True)
+    else:
+        shutil.copy(render, RAIZ / "arte/fondos/calle_mayor_suelo.png")
+
+    BL.solo_visibles(objetos, casas)
+    ficha = {"lienzo": [SUELO_ANCHO, SUELO_ALTO_PX], "escala": TESELA_ESCALA, "teselas": []}
+    for ident, x, y, w, h in teselas_suelo():
+        BL.encuadrar(TESELA[0], TESELA[1], ((SUELO_OX - x) * TESELA_ESCALA, (SUELO_OY - y) * TESELA_ESCALA),
+                     TESELA_ESCALA, (0.0, 0.0, 0.0))
+        tmp = (temporal or DIR_SUELO) / f"{ident}_tmp.png"
+        BL.renderizar(tmp, max(32, int(muestras * 0.75)))
+        img = sobre_magenta(tmp, DIR_SUELO / f"{ident}_luz.png")
+        img.split()[3].save(DIR_FICHAS.parent / f"{ident}_mascara.png", optimize=True)
+        tmp.unlink(missing_ok=True)
+        ficha["teselas"].append({"id": ident, "rect": [x, y, w, h], "luz": f"docs/arte/suelo/{ident}_luz.png"})
+        print(f"  {ident}: {w:.0f} × {h:.0f} px del suelo desde ({x:.0f}, {y:.0f})", flush=True)
+    (RAIZ / "herramientas/datos/suelo.json").write_text(json.dumps(ficha, ensure_ascii=False, indent=1),
+                                                        encoding="utf-8")
 
 
 # ------------------------------------------------------------- escena
@@ -724,7 +817,8 @@ def main():
                          renderizar=not a.sin_render)
     if con_suelo:
         print("Suelo de la calle…", flush=True)
-        renderizar_suelo(todo["suelo"][1], muestras)
+        casas = [o for clave, (_, objs, _) in todo.items() if clave.startswith("casa_") for o in objs]
+        renderizar_suelo(todo["suelo"][1], muestras, casas, temporal)
     ficha_cadaver()
     fichas = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted(DIR_FICHAS.glob("*.json"))}
     generar_escena(fichas)

@@ -341,10 +341,10 @@ def canto():
     A = Arbol("canto")
     isla = A.isla()
     v = A.coord()
-    color = A.rampa(isla, [(0.0, srgb((0.27, 0.26, 0.24))), (0.2, srgb((0.36, 0.34, 0.31))),
-                           (0.4, srgb((0.33, 0.28, 0.22))), (0.6, srgb((0.42, 0.40, 0.37))),
-                           (0.75, srgb((0.22, 0.22, 0.23))), (0.9, srgb((0.38, 0.32, 0.25))),
-                           (1.0, srgb((0.48, 0.46, 0.43)))])
+    color = A.rampa(isla, [(0.0, srgb((0.29, 0.26, 0.22))), (0.2, srgb((0.38, 0.34, 0.29))),
+                           (0.4, srgb((0.36, 0.29, 0.21))), (0.6, srgb((0.44, 0.40, 0.34))),
+                           (0.75, srgb((0.24, 0.22, 0.21))), (0.9, srgb((0.40, 0.32, 0.23))),
+                           (1.0, srgb((0.50, 0.46, 0.40)))])
     color = A.mezcla(A.rango(A.ruido(v, 30, 4), 0.3, 0.7, 0, 0.3), color, srgb((0.3, 0.28, 0.25)), "MULTIPLY")
     x, y, z = A.separar(v)
     barro = A.rango(A.mate("ADD", z, A.mate("MULTIPLY", A.ruido(v, 1.5, 3), 0.02)), 0.022, 0.006)
@@ -372,12 +372,50 @@ def tierra():
     return A.superficie(color, A.rango(humedo, 0, 1, 0.9, 0.35), n, especular=0.3)
 
 
+def barro():
+    """Barro de calle: oscuro, húmedo y brillante en lo hondo, algo más claro y mate
+    donde se va secando, con pisadas, roderas, briznas de paja y manchas."""
+    A = Arbol("barro")
+    v = A.coord()
+    x, y, z = A.separar(v)
+    seco = A.rango(A.mate("ADD", z, A.mate("MULTIPLY", A.ruido(v, 2.0, 4), 0.015)), 0.015, 0.05)
+    color = A.mezcla(seco, srgb((0.075, 0.058, 0.042)), srgb((0.20, 0.155, 0.105)))
+    color = A.mezcla(A.rango(A.ruido(v, 5, 6, 0.65), 0.3, 0.75, 0, 0.45), color, srgb((0.05, 0.04, 0.03)), "MULTIPLY")
+    color = A.mezcla(A.rango(A.ruido(v, 0.8, 3), 0.55, 0.7, 0, 0.35), color, srgb((0.22, 0.17, 0.11)))
+    paja = A.rango(A.onda(A.coord((1.0, 2.5, 1.0)), 35, "BANDS", "X", 30, 2), 0.95, 1.0, 0.0, 1.0)
+    paja = A.mate("MULTIPLY", paja, A.rango(A.ruido(v, 1.2, 3), 0.58, 0.68))
+    color = A.mezcla(A.mate("MULTIPLY", paja, 0.7), color, srgb((0.42, 0.34, 0.18)))
+    pisadas = A.rango(A.voronoi(A.coord((1.0, 1.6, 1.0)), 5.0), 0.0, 0.25, 1.0, 0.0)
+    pisadas = A.mate("MULTIPLY", pisadas, A.rango(A.ruido(v, 0.9, 2), 0.45, 0.6))
+    grumos = A.ruido(v, 9, 6, 0.7)
+    n1 = A.relieve(A.ruido(v, 30, 6, 0.7), 0.4, 0.004)
+    n2 = A.relieve(grumos, 0.55, 0.012, n1)
+    n3 = A.relieve(A.mate("MULTIPLY", pisadas, -1.0), 0.7, 0.015, n2)
+    rug = A.rango(seco, 0.0, 1.0, 0.28, 0.9)
+    return A.superficie(color, rug, n3, especular=0.35)
+
+
+def bonigas():
+    A = Arbol("bonigas")
+    v = A.coord()
+    c = A.rampa(A.ruido(v, 40, 4), [(0.3, srgb((0.10, 0.08, 0.05))), (0.7, srgb((0.22, 0.18, 0.10)))])
+    return A.superficie(c, 0.6, A.relieve(A.ruido(v, 80, 3), 0.4, 0.003), especular=0.4)
+
+
 def agua():
-    """Charcos: agua sucia y quieta que refleja el cielo."""
+    """Charcos: agua turbia y poco honda; deja ver las piedras del fondo y refleja algo
+    del cielo y de las luces."""
     A = Arbol("agua")
     v = A.coord()
-    n = A.relieve(A.ruido(v, 8, 2), 0.04, 0.002)
-    return A.superficie(srgb((0.03, 0.03, 0.03)), 0.04, n, especular=0.6)
+    b = A.nodo("ShaderNodeBsdfPrincipled")
+    A.poner(b.inputs["Base Color"], srgb((0.16, 0.13, 0.09)))
+    A.poner(b.inputs["Roughness"], 0.05)
+    A.poner(b.inputs["IOR"], 1.33)
+    A.poner(b.inputs["Transmission Weight"], 0.75)
+    A.poner(b.inputs["Specular IOR Level"], 0.6)
+    A.poner(b.inputs["Normal"], A.relieve(A.ruido(v, 6, 2), 0.05, 0.002))
+    A.nt.links.new(b.outputs[0], A.salida.inputs["Surface"])
+    return A.mat
 
 
 def mortero():
@@ -522,6 +560,8 @@ FABRICAS = {
     "canto": canto,
     "tierra": tierra,
     "agua": agua,
+    "barro": barro,
+    "bonigas": bonigas,
     "losa": losa,
     "hierro": hierro,
     "cera_blanca": lambda: cera((0.86, 0.83, 0.74)),
