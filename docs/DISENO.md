@@ -38,7 +38,10 @@ estrictos, avisos tratados como errores y pruebas unitarias con herramientas est
 que se **modelan por código en Blender** (`herramientas/blender/`, `herramientas/kit_calle_mayor.py`)
 con geometría de verdad y se **renderizan con la cámara exacta del juego** y la luz de
 la escena ya hecha. ChatGPT repinta cada pieza encima, sin mover contornos, y
-`herramientas/procesar_pieza.py` comprueba la silueta y la encaja.
+`herramientas/procesar_pieza.py` comprueba la silueta y la encaja. La pintura se
+respeta tal cual (decisión de Esteban con la primera casa, más cálida y clara que el
+render); si alguna pieza se desvía de la noche de las demás, `--luz render` conserva
+su textura y le impone la luz del render.
 
 - **Cámara**: ortográfica, acimut 45°, elevación 30°, 108,05 px por metro en el plano de
   la cámara. Reproduce la proyección 2:1 del juego (comprobado punto a punto).

@@ -351,9 +351,10 @@ def construir_suelo(detalle=True):
         maestras = [1.5 + 3 * k for k in range(-5, 13)]
         c, r, g = MD.empedrado(m.rng, -12, 36, 0.43, 23, dentro, saltar_y=[(CANAL[0] - 0.04, CANAL[1] + 0.04)],
                                maestras=maestras)
-        # Bocacalle tras la casa de la esquina.
+        # Bocacalle tras la casa de la esquina y calle que sigue antes de la primera casa.
         c2, r2, g2 = MD.empedrado(m.rng, 24.35, 36, -9, 0.43, dentro)
-        c, r, g = c + c2, r + r2, g + g2
+        c3, r3, g3 = MD.empedrado(m.rng, -14, -0.02, -9, 0.43, dentro)
+        c, r, g = c + c2 + c3, r + r2 + r3, g + g2 + g3
         cantos = BL.nube("suelo_cantos", c, r, g, MAT.obtener("canto"), desorden=0.005)
         print(f"  {len(c)} cantos", flush=True)
     # Canalillo: dos hileras de losas que vierten al centro.
@@ -614,7 +615,7 @@ def generar_escena(fichas: dict):
         "alguacil": S(12.5, 2.5),
         "tono_personajes": TONO_PERSONAJES,
         # Puntos para la prueba de humo: detrás de una columna de la casa 3 y detrás del carro.
-        "pruebas": {"TrasColumna": S(13.3, -0.9), "TrasCarro": S(7.5, 5.6)},
+        "pruebas": {"TrasColumna": S(12.6, -0.9), "TrasCarro": S(7.5, 5.6)},
         "luces": [{"nombre": "VelaHornacina", "posicion": S(hx, FONDO - 0.05, Z_HORNACINA + 0.3)}],
         "puntos": {
             "alguacil": {"zona": [S(12.15, 2.15, 0), S(12.95, 2.15, 0), S(12.95, 2.95, 0), S(12.95, 2.95, 1.95),
@@ -691,7 +692,7 @@ def recortes_de(todo, clave):
 
 def main():
     args = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    args.add_argument("--solo", nargs="*", help="renderizar solo estas piezas")
+    args.add_argument("--solo", nargs="*", help="renderizar solo estas piezas («suelo» para el suelo)")
     args.add_argument("--sin-suelo", action="store_true", help="no rehacer el suelo")
     args.add_argument("--muestras", type=int, default=160, help="muestras por píxel de la pieza del juego")
     args.add_argument("--rapido", action="store_true", help="prueba rápida: pocas muestras")
@@ -708,7 +709,8 @@ def main():
     t0 = time.time()
     BL.reiniciar()
     MAT.vaciar()
-    todo, luces = construir_calle(suelo_detallado=not (a.sin_suelo or a.solo or a.sin_render))
+    con_suelo = not (a.sin_suelo or a.sin_render) and (not a.solo or "suelo" in a.solo)
+    todo, luces = construir_calle(suelo_detallado=con_suelo)
     ilum = Iluminacion(luces)
     print(f"Calle construida en {time.time() - t0:.0f} s", flush=True)
     if a.blend:
@@ -720,7 +722,7 @@ def main():
             continue
         renderizar_pieza(pieza, objetos, siluetas, ilum, muestras, temporal, recortes_de(todo, clave),
                          renderizar=not a.sin_render)
-    if not a.sin_suelo and not a.solo and not a.sin_render:
+    if con_suelo:
         print("Suelo de la calle…", flush=True)
         renderizar_suelo(todo["suelo"][1], muestras)
     ficha_cadaver()
