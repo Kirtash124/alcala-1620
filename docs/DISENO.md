@@ -32,35 +32,56 @@ estrictos, avisos tratados como errores y pruebas unitarias con herramientas est
 - Inconveniente asumido: traducir Ink requiere herramientas externas. No hay versión
   en inglés prevista de inicio.
 
-## Gráficos: fondo plano + oclusores
+## Gráficos: piezas renderizadas en Blender + repintado
 
-El arte llega como imágenes planas (ChatGPT), sin mapas de profundidad. Por eso:
+**Octubre de 2026.** Los escenarios se componen de piezas (cada casa, cada objeto fijo)
+que se **modelan por código en Blender** (`herramientas/blender/`, `herramientas/kit_calle_mayor.py`)
+con geometría de verdad y se **renderizan con la cámara exacta del juego** y la luz de
+la escena ya hecha. ChatGPT repinta cada pieza encima, sin mover contornos, y
+`herramientas/procesar_pieza.py` comprueba la silueta y la encaja.
 
-- **Fondo**: una imagen de 2560 × 1440 por escenario, cámara isométrica 2:1 común.
-- **Oclusores**: recortes del propio fondo con una línea base. El motor los ordena por
-  altura con los personajes, y así una columna tapa al pesquisidor si pasa por detrás.
-- **Navegación**: polígono transitable + obstáculos, convertidos en malla al cargar.
+- **Cámara**: ortográfica, acimut 45°, elevación 30°, 108,05 px por metro en el plano de
+  la cámara. Reproduce la proyección 2:1 del juego (comprobado punto a punto).
+- **Luz**: luna fría desde arriba a la izquierda y rasante a las fachadas, para que el
+  relieve se lea y los soportales queden en penumbra; velas y ventanas encendidas con
+  luz cálida. Toda la calle se construye a la vez: al renderizar una pieza, las demás
+  hacen sombra y rebotan luz, y las que quedan delante la recortan (holdout), así que
+  cada imagen contiene solo lo que de verdad se ve.
+- **Orden de dibujo**: las casas van detrás de los personajes y solo tapan sus columnas
+  (recortes con la silueta exacta y su línea base). Los objetos sueltos se dibujan en
+  tiras verticales, cada una con su línea base.
+- **Navegación**: polígono transitable + huellas de las piezas, convertidos en malla al
+  cargar.
 - **Personajes**: dos dibujos (frente y espaldas) más espejo; caminar es un balanceo
-  por código. Evita pedir a ChatGPT fotogramas de animación coherentes, que es
-  justo lo que peor hace.
-- **Luz**: tono general con `CanvasModulate` y luces que parpadean encima.
+  por código. El lugar les aplica un tono (`TonoPersonajes`) para encajarlos en la luz.
+- **Luces del motor**: solo para el temblor de las velas y el farol del alguacil.
 
-Prueba en curso (octubre de 2026): **maqueta con texturas**. La geometría del escenario
-se construye por código (`herramientas/maqueta_calle_mayor.py`) y se recubre con texturas
-repetibles hechas con ChatGPT (`arte/entrada/texturas/`). Garantiza cámara y escala
-exactas, y la zona transitable y los oclusores salen de la misma geometría. Se compara
-con un fondo pintado entero por ChatGPT antes de decidir el método definitivo. La escena
-usa el fondo con texturas; `generar_calle_mayor.py --fondo provisional` vuelve al dibujo
-provisional.
+Por qué: la primera prueba (un fondo plano pintado entero por ChatGPT con oclusores
+dibujados a mano) y la segunda (maqueta por código recubierta con texturas de ChatGPT)
+daban una calidad insuficiente. ChatGPT no mantiene cámara ni escala entre imágenes, y
+las texturas planas sobre cajas parecían de cartón. Con geometría de verdad, cada
+teja, tabla, clavo y balaustre existe, las sombras son correctas y la pintura de
+ChatGPT solo tiene que añadir mano de pintor.
+
+Requisitos para regenerar el arte: Python 3.13 con `bpy` (Blender como módulo),
+NumPy, SciPy, scikit-image y Pillow. El juego no los necesita.
 
 Limitaciones conocidas:
 
-- Lo que la imagen no pinta no existe: no se puede «ver detrás» de un voladizo.
-  Condiciona el diseño de los escenarios (ver `docs/GUIA_ARTE.md`).
-- La línea base de los oclusores es horizontal; los muros largos en diagonal se
-  dividen en tramos.
-- Sin mapas de normales, las luces iluminan por igual y no marcan relieve. Se puede
-  añadir más adelante generando mapas aproximados.
+- Lo que la imagen no pinta no existe: no se puede «ver detrás» de un voladizo. Bajo el
+  soportal solo se ve el muro hasta 1,76 m; lo examinable tiene que estar por debajo.
+- La línea base de cada recorte es horizontal: un objeto largo en diagonal se parte en
+  tiras, y en el borde entre dos tiras el personaje puede quedar medio tapado un instante.
+- Sin mapas de normales, las luces del motor iluminan por igual; por eso la luz va
+  pintada en las piezas y las del motor solo tiemblan.
+
+### Decisiones anteriores (sustituidas)
+
+- **Fondo plano + oclusores** (septiembre de 2026): una imagen de 2560 × 1440 por
+  escenario pintada por ChatGPT, con recortes del propio fondo dibujados a mano para
+  tapar al personaje. Se abandonó porque ChatGPT no respeta cámara ni escala.
+- **Maqueta con texturas** (octubre de 2026): geometría por código recubierta con
+  texturas repetibles de ChatGPT. Se abandonó por calidad: parecía de cartón.
 
 ## Reglas: facultades de Huarte de San Juan
 

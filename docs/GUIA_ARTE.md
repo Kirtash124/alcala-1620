@@ -1,19 +1,34 @@
 # Guía de arte con ChatGPT
 
-Cómo generar fondos, personajes y objetos para que encajen en el juego sin retoques.
-La regla de oro: **todas las imágenes comparten cámara, escala y luz**. Si una sola
-imagen se sale de eso, se nota en cuanto el pesquisidor camina por encima.
+Cómo hacer el arte para que encaje en el juego sin retoques. La regla de oro: **todas
+las imágenes comparten cámara, escala y luz**. Si una sola se sale de eso, se nota en
+cuanto el pesquisidor camina por encima.
 
-## 1. Las dos plantillas
+## 1. Cómo se hacen los escenarios
 
-Están en `docs/arte/`. Adjúntalas a ChatGPT siempre que pidas algo nuevo.
+Los escenarios no se piden enteros: se componen de **piezas** (cada casa, el carro, los
+barriles) que se montan en Godot sobre un suelo.
+
+1. **Yo modelo cada pieza por código en Blender** (`herramientas/kit_calle_mayor.py`):
+   cada teja, cada tabla, cada clavo, cada balaustre. Así la cámara, la escala, las
+   sombras y los contornos son exactos, y el juego sabe dónde está cada columna.
+2. **Lo renderizo con la luz de la escena** (luna fría desde arriba a la izquierda,
+   velas cálidas). Ese render ya entra en el juego tal cual.
+3. **Tú se lo das a ChatGPT para que lo repinte** con mano de pintor (la textura, el
+   desgaste, la pincelada) sin mover un solo contorno. Las peticiones completas, pieza
+   a pieza, están en [`docs/arte/piezas/README.md`](arte/piezas/README.md).
+4. Yo meto la pintura con `herramientas/procesar_pieza.py`, que comprueba que respeta la
+   silueta y la encaja en su sitio. Si no la respeta, se repite.
+
+El suelo de la calle (empedrado, canalillo, charcos) lo hago yo entero.
+
+## 2. Plantillas y datos de la cámara
+
+Están en `docs/arte/`. Sirven para personajes y objetos sueltos.
 
 - **`plantilla_perspectiva.png`**: la cámara del juego. Rejilla isométrica 2:1, un bloque
-  de 3 × 3 × 3 m, un muro con puerta de 2,20 m y una persona de 1,70 m. Sirve para
-  fondos y objetos.
+  de 3 × 3 × 3 m, un muro con puerta de 2,20 m y una persona de 1,70 m.
 - **`plantilla_personaje.png`**: las dos poses que necesito de cada personaje.
-
-Datos de la cámara, por si ChatGPT pregunta o se desvía:
 
 | | |
 |---|---|
@@ -21,59 +36,22 @@ Datos de la cámara, por si ChatGPT pregunta o se desvía:
 | Suelo | las líneas bajan 1 px por cada 2 px en horizontal |
 | Escala | 1 m de suelo ≈ 76 px en horizontal · 1 m de altura ≈ 94 px |
 | Persona de 1,70 m | ≈ 159 px (con sombrero, ≈ 180 px) |
-| Luz principal | desde arriba a la izquierda |
-| Lienzo de un escenario | 2560 × 1440 (16:9) |
+| Luz | de noche: luna fría desde arriba a la izquierda, rasante a las fachadas; velas cálidas |
+| Lienzo del suelo | 3200 × 1800 |
 
-## 2. Bloque de estilo (pégalo en todas las peticiones)
+## 3. Bloque de estilo (va en todas las peticiones)
 
-Es una propuesta de partida. Cámbialo a tu gusto, pero una vez fijado no lo toques:
-cada variación de este texto es una variación de estilo.
+Una vez fijado, no se toca: cada variación de este texto es una variación de estilo.
 
-> Pintura digital con aspecto de óleo, pincelada visible pero contenida. Paleta terrosa:
-> ocres, sienas, cal sucia, grises azulados. Contraste entre luz cálida de vela y noche
-> fría azulada. Arquitectura castellana de principios del siglo XVII: piedra, ladrillo,
-> enfoscado de cal, madera vieja, teja árabe, forja. Nada de contornos negros ni aspecto
-> de dibujos animados. Texturas ricas y realistas, desgaste y suciedad creíbles.
-
-## 3. Fondos de escenario
-
-### Qué pedir
-
-- El escenario **vacío**: sin personas, sin animales, sin texto, sin marcos ni firmas.
-- Formato **16:9 apaisado**, la mayor resolución que te dé (lo ideal, 2560 × 1440).
-- La **misma cámara** que la plantilla de perspectiva, adjuntándola.
-- La luz que tendrá la escena en el juego (noche con velas, mediodía...). Las luces que
-  parpadean (velas, faroles) las añado yo encima, pero el fondo tiene que pintarlas ya
-  encendidas y con su resplandor.
-
-### Lo que la cámara no puede enseñar (importante)
-
-El fondo es una imagen plana: el juego no puede ver lo que la imagen no pinta.
-
-- **Nada de voladizos profundos sobre zonas donde se camina.** Un soportal muy hondo
-  esconde su interior bajo el piso de arriba, y el pesquisidor desaparecería al entrar.
-  Soportales de unos 2 m de fondo y techos altos funcionan; los de 3 m, no.
-- **El suelo transitable tiene que verse.** Ni callejones tapados por tejados ni
-  rincones detrás de esquinas.
-- **Nada importante tapado.** Si algo se puede examinar (una puerta, una hornacina, un
-  cadáver), que se vea entero.
-- **Objetos en primer plano, con mesura.** Un carro o unos barriles delante dan
-  profundidad y los sé recortar para que el pesquisidor pase por detrás. Una pared
-  entera delante, no.
-
-### Petición tipo
-
-> Adjunto una plantilla de cámara. Pinta un escenario de videojuego isométrico con
-> **exactamente** esa perspectiva y esa escala (la figura gris mide 1,70 m), en formato
-> 16:9 a la máxima resolución posible.
-> Escenario: [describe el lugar: la calle Mayor de Alcalá de Henares en 1620, de noche,
-> con soportales de unos 2 m de fondo sobre columnas de piedra, empedrado, una hornacina
-> con una vela...].
-> Sin personas ni animales. Sin texto. La luz principal viene de arriba a la izquierda.
-> [Bloque de estilo]
-
-Si ChatGPT tuerce la cámara, no pidas «arréglalo»: pide un solo cambio cada vez
-(«mantén todo igual y alinea las líneas del suelo con las de la plantilla»).
+> Pintura al óleo de tenebrismo español del siglo XVII, en la línea de José de Ribera y
+> Francisco de Zurbarán, y de las escenas a la luz de una vela de Georges de La Tour. La
+> mayor parte de la imagen queda en penumbra profunda: sombras casi negras y cálidas,
+> nunca azul saturado. El detalle y la textura se concentran donde cae la luz. Pincelada
+> visible pero contenida, empastes en las luces, veladuras en las sombras. Paleta
+> terrosa: tierras, sienas, ocres, cal sucia, almagra apagada, grises de piedra; la luna
+> enfría y apaga los colores; la luz de vela es ámbar y se apaga enseguida. Nada de
+> contornos negros, nada de aspecto de dibujos animados ni de render 3D limpio:
+> superficies gastadas, polvo, hollín, humedad, desconchones, madera reseca.
 
 ## 4. Personajes
 
@@ -112,15 +90,15 @@ Caminar lo animo yo con un balanceo, así que no hacen falta fotogramas.
 
 ## 5. Objetos sueltos
 
-Cosas que se mueven o aparecen y desaparecen (un cadáver que se llevan, una carta en el
-suelo, una puerta que se abre): igual que los personajes, sueltas, con fondo
+Los objetos fijos del escenario (carro, barriles) son piezas como las casas: los modelo
+yo y ChatGPT los repinta. Lo que se mueve o aparece y desaparece (un cadáver que se
+llevan, una carta en el suelo) se pide como los personajes: suelto, con fondo
 transparente o magenta y con la plantilla de perspectiva adjunta para la escala.
-Lo que no cambia nunca va pintado en el fondo.
 
 ## 6. Cómo me lo pasas
 
 - Descarga siempre el **PNG original** de ChatGPT, no una captura de pantalla.
-- Nombres sin espacios ni tildes: `fondo_calle-mayor_v2.png`, `alguacil_frente.png`,
+- Nombres sin espacios ni tildes: `casa_3_pintada.png`, `alguacil_frente.png`,
   `alguacil_espaldas.png`.
 - Súbelos a la carpeta `arte/entrada/` del repositorio (en GitHub: *Add file → Upload
   files*), o déjamelos en una carpeta del PC que conectes a la conversación.
@@ -128,10 +106,12 @@ Lo que no cambia nunca va pintado en el fondo.
 
 ## 7. Qué hago yo con ellos
 
-1. Los limpio y los escalo con `herramientas/procesar_arte.py` (fondos a 2560 × 1440;
-   figuras sin fondo y a la altura del juego).
-2. Dibujo la zona por la que se camina, los obstáculos y los recortes que tapan al
-   pesquisidor cuando pasa por detrás (columnas, carros, esquinas).
+1. Piezas: `herramientas/procesar_pieza.py <pieza> <imagen>` quita el magenta, encaja la
+   pintura sobre la silueta, mide cuánto coincide (por debajo del 92 % no la acepta) y
+   la deja en `arte/piezas/`. Figuras: `herramientas/procesar_arte.py` (sin fondo y a la
+   altura del juego).
+2. La zona por la que se camina, los obstáculos y los recortes que tapan al pesquisidor
+   (columnas, el carro en tiras) salen de la misma geometría que la pieza.
 3. Coloco los puntos de interés, las luces que parpadean y el punto de entrada.
 4. Lo pruebo con capturas y te lo enseño.
 

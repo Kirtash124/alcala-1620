@@ -52,12 +52,12 @@ arte y textos provisionales, para comprobar que todo el sistema funciona.
 
 | | |
 |---|---|
-| `arte/` | imágenes del juego (por ahora, provisionales) |
+| `arte/` | imágenes del juego: piezas del escenario, suelo, personajes (provisionales) |
 | `dialogos/` | conversaciones en Ink |
 | `escenas/` | escenas de Godot: principal, lugares, personajes |
 | `codigo/` | código C#: `Reglas` (sin Godot), `Juego`, `Ui` |
 | `docs/` | guías: arte, Ink, montar escenarios, decisiones de diseño |
-| `herramientas/` | scripts de Python para arte y escenas |
+| `herramientas/` | scripts de Python para arte y escenas (el escenario se modela en Blender por código) |
 | `pruebas/` | pruebas automáticas |
 
 ## Guías

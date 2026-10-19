@@ -75,11 +75,19 @@ public partial class PruebaHumo : Node
         }
         await Capturar("01_inicio");
 
-        // Paseo por detrás de una columna: sirve para ver en la captura si el oclusor tapa.
-        await Andar(lugar.MasCercanoTransitable(new Vector2(1672, 735)));
-        await Capturar("02a_tras_columna");
-        await Andar(lugar.MasCercanoTransitable(new Vector2(760, 770)));
-        await Capturar("02b_tras_carro");
+        // Paseo por detrás de una columna y del carro: sirve para ver en las capturas
+        // si los recortes tapan. Los puntos los pone el generador de la escena.
+        foreach ((string marca, string captura) in new[] { ("TrasColumna", "02a_tras_columna"), ("TrasCarro", "02b_tras_carro") })
+        {
+            Marker2D? m = lugar.GetNodeOrNull<Marker2D>($"Pruebas/{marca}");
+            Comprobar(m is not null, $"falta el marcador de prueba «{marca}»");
+            if (m is null)
+                continue;
+            Vector2 destino = lugar.MasCercanoTransitable(m.GlobalPosition);
+            Comprobar(destino.DistanceTo(m.GlobalPosition) < 25f, $"«{marca}» no está en zona transitable");
+            await Andar(destino);
+            await Capturar(captura);
+        }
 
         await Conversar("Cadaver", "02_cadaver");
         await Conversar("Hornacina", null);

@@ -70,6 +70,7 @@ public partial class ControlJuego : Node
         Jugador = GD.Load<PackedScene>(RutaPesquisidor).Instantiate<Personaje>();
         Jugador.Name = "Jugador";
         LugarActual.Entidades.AddChild(Jugador);
+        Jugador.Modulate = LugarActual.TonoPersonajes;
         Jugador.Situar(LugarActual.Inicio);
 
         camara.Objetivo = Jugador;
