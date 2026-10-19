@@ -8,10 +8,15 @@
     python3 herramientas/procesar_arte.py figura entrada.png arte/personajes/x_se.png --altura 1.92
     (--altura en metros: alto TOTAL de la figura, sombrero incluido. Persona con sombrero ≈ 1,92.)
 
+  Las dos poses de un personaje en una imagen (frente a la izquierda, espaldas a la derecha):
+    python3 herramientas/procesar_arte.py poses entrada.png arte/personajes/x
+    (escribe x_se.png y x_ne.png con la misma escala)
+
 Si la imagen ya trae transparencia, se respeta. Si no, se toma como fondo el color
 de las esquinas y se borra todo lo que se le parezca y esté conectado con ellas.
 """
 import argparse
+import math
 import sys
 from collections import deque
 from pathlib import Path
@@ -92,35 +97,70 @@ def quitar_fondo(img: Image.Image, tolerancia: float) -> Image.Image:
     return Image.fromarray(salida, "RGBA")
 
 
-def figura(entrada: Path, salida: Path, altura_m: float, tolerancia: float):
-    img = quitar_fondo(Image.open(entrada), tolerancia)
+def recortar(img: Image.Image) -> Image.Image:
     caja = img.split()[3].point(lambda v: 255 if v > 24 else 0).getbbox()
     if caja is None:
         sys.exit("No queda nada tras quitar el fondo: prueba con más --tolerancia o un fondo más liso.")
-    img = img.crop(caja)
-    alto_px = round(altura_m * ZH)
-    escala = alto_px / img.height
-    img = img.resize((max(1, round(img.width * escala)), alto_px), Image.LANCZOS)
-    # Lienzo con margen y los pies centrados abajo.
-    ancho = img.width + 16
-    lienzo = Image.new("RGBA", (ancho, alto_px + 6), (0, 0, 0, 0))
-    lienzo.paste(img, (8, 0), img)
+    return img.crop(caja)
+
+
+def centro_de_pies(img: Image.Image) -> float:
+    """Columna de los pies: el centro de masa del quinto inferior de la figura (piernas
+    y pies). Con capas o brazos que sobresalen de un lado, la caja no está centrada en
+    los pies y el personaje parecería desplazado al girarlo en espejo."""
+    alfa = np.asarray(img.split()[3]).astype(np.float32)
+    abajo = alfa[int(alfa.shape[0] * 0.8):]
+    xs = np.arange(alfa.shape[1], dtype=np.float32)
+    return float((abajo.sum(0) * xs).sum() / max(abajo.sum(), 1.0))
+
+
+def colocar(img: Image.Image, escala: float, salida: Path):
+    """Escala la figura y la pone en un lienzo con los pies centrados en horizontal y
+    5 px de margen bajo las suelas: el origen del Personaje (los pies) queda en
+    (ancho / 2, alto − 5). Personaje.cs calcula el desplazamiento con esa regla."""
+    alto = round(img.height * escala)
+    img = img.resize((max(1, round(img.width * escala)), alto), Image.LANCZOS)
+    pies = centro_de_pies(img)
+    medio = math.ceil(max(pies, img.width - pies)) + 8
+    lienzo = Image.new("RGBA", (2 * medio, alto + 6), (0, 0, 0, 0))
+    lienzo.paste(img, (round(medio - pies), 0), img)
     lienzo.save(salida)
     print(f"Figura guardada: {salida} ({lienzo.width} × {lienzo.height}).")
-    print(f"En Godot, Cuerpo: centered = false, offset = Vector2({-lienzo.width // 2}, {-(alto_px + 1)})")
+
+
+def figura(entrada: Path, salida: Path, altura_m: float, tolerancia: float):
+    img = recortar(quitar_fondo(Image.open(entrada), tolerancia))
+    colocar(img, altura_m * ZH / img.height, salida)
+
+
+def poses(entrada: Path, base: Path, altura_m: float, tolerancia: float):
+    """Las dos poses de un personaje en una sola imagen (como las pide la guía): a la
+    izquierda de frente (SE), a la derecha de espaldas (NE). Las dos llevan la misma
+    escala, la de la más alta, para que el personaje no cambie de tamaño al girarse."""
+    img = quitar_fondo(Image.open(entrada), tolerancia)
+    mitad = img.width // 2
+    frente = recortar(img.crop((0, 0, mitad, img.height)))
+    espalda = recortar(img.crop((mitad, 0, img.width, img.height)))
+    escala = altura_m * ZH / max(frente.height, espalda.height)
+    if abs(frente.height - espalda.height) > 0.04 * max(frente.height, espalda.height):
+        print(f"Aviso: las dos poses no miden lo mismo ({frente.height} y {espalda.height} px); revísalas.")
+    colocar(frente, escala, base.with_name(base.name + "_se.png"))
+    colocar(espalda, escala, base.with_name(base.name + "_ne.png"))
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("tipo", choices=["fondo", "figura"])
+    ap.add_argument("tipo", choices=["fondo", "figura", "poses"])
     ap.add_argument("entrada", type=Path)
-    ap.add_argument("salida", type=Path)
+    ap.add_argument("salida", type=Path, help="con «poses», la base del nombre (arte/personajes/x → x_se.png y x_ne.png)")
     ap.add_argument("--altura", type=float, default=1.92, help="alto total de la figura en metros")
     ap.add_argument("--tolerancia", type=float, default=48.0, help="cuánto puede variar el color del fondo")
     a = ap.parse_args()
     a.salida.parent.mkdir(parents=True, exist_ok=True)
     if a.tipo == "fondo":
         fondo(a.entrada, a.salida)
+    elif a.tipo == "poses":
+        poses(a.entrada, a.salida, a.altura, a.tolerancia)
     else:
         figura(a.entrada, a.salida, a.altura, a.tolerancia)
 

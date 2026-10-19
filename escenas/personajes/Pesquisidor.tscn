@@ -17,4 +17,3 @@ texture = ExtResource("4")
 [node name="Cuerpo" type="Sprite2D" parent="."]
 texture = ExtResource("2")
 centered = false
-offset = Vector2(-60, -191)

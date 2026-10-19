@@ -32,6 +32,7 @@ python3 herramientas/procesar_pieza.py casa_3 pintada.png   # mete una pieza rep
 python3 herramientas/arte_provisional.py            # personajes y objetos provisionales
 python3 herramientas/plantillas_arte.py              # plantillas para ChatGPT (docs/arte)
 python3 herramientas/procesar_arte.py fondo|figura entrada.png salida.png
+python3 herramientas/procesar_arte.py poses entrada.png arte/personajes/x   # x_se.png y x_ne.png
 ```
 
 Antes de dar algo por terminado: compilar, pruebas unitarias, prueba de humo y, si

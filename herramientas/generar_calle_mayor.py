@@ -85,7 +85,7 @@ nodo("Alguacil", "Node2D", "Entidades", position=v2(alg), script=recurso("Script
      Frente=textura_alg, MiraIzquierda="true")
 nodo("Sombra", "Sprite2D", "Entidades/Alguacil", texture=recurso("Texture2D", "res://arte/objetos/sombra.png"),
      position="Vector2(0, -2)")
-nodo("Cuerpo", "Sprite2D", "Entidades/Alguacil", texture=textura_alg, centered="false", offset="Vector2(-58, -191)")
+nodo("Cuerpo", "Sprite2D", "Entidades/Alguacil", texture=textura_alg, centered="false")
 # Posición del cristal del farol en el dibujo del alguacil (está en espejo: queda a la izquierda).
 parpadeo = recurso("Script", "res://codigo/Juego/Parpadeo.cs")
 nodo("Farol", "PointLight2D", "Entidades/Alguacil", position="Vector2(-24.0, -66.0)", script=parpadeo,

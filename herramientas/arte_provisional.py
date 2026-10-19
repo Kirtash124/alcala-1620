@@ -247,12 +247,21 @@ def main():
     (RAIZ / "arte/personajes").mkdir(parents=True, exist_ok=True)
     (RAIZ / "arte/objetos").mkdir(parents=True, exist_ok=True)
 
-    pesquisidor(False).save(RAIZ / "arte/personajes/pesquisidor_se.png")
-    pesquisidor(True).save(RAIZ / "arte/personajes/pesquisidor_ne.png")
-    alguacil().save(RAIZ / "arte/personajes/alguacil_se.png")
-    cadaver().save(RAIZ / "arte/objetos/cadaver.png")
+    # Lo que ya está pintado (su original en arte/entrada/personajes/) no se pisa.
+    pintado = RAIZ / "arte/entrada/personajes"
+    hechos = []
+    for nombre, dibujar in (("pesquisidor", lambda: (pesquisidor(False), pesquisidor(True))),
+                            ("alguacil", lambda: (alguacil(),))):
+        if (pintado / f"{nombre}_poses.png").exists():
+            continue
+        for dibujo, sufijo in zip(dibujar(), ("se", "ne")):
+            dibujo.save(RAIZ / f"arte/personajes/{nombre}_{sufijo}.png")
+        hechos.append(nombre)
+    if not (pintado / "cadaver.png").exists():
+        cadaver().save(RAIZ / "arte/objetos/cadaver.png")
+        hechos.append("cadáver")
     sombra().save(RAIZ / "arte/objetos/sombra.png")
-    print("Arte provisional generado.")
+    print("Arte provisional generado: " + ", ".join(hechos + ["sombra"]) + ".")
 
 
 if __name__ == "__main__":

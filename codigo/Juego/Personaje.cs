@@ -10,7 +10,7 @@ namespace Alcala.Juego;
 /// El caminar se anima por código (balanceo), así que no hacen falta fotogramas.
 ///
 /// Hijos esperados: «Cuerpo» (Sprite2D) y, opcionalmente, «Sombra» (Sprite2D).
-/// El origen del nodo está en los pies.
+/// El origen del nodo está en los pies; el desplazamiento del dibujo se calcula solo.
 /// </summary>
 [GlobalClass]
 public partial class Personaje : Node2D
@@ -20,6 +20,9 @@ public partial class Personaje : Node2D
     [Export] public float Velocidad { get; set; } = 240f;
     [Export] public bool MiraIzquierda { get; set; }
     [Export] public bool DeEspaldas { get; set; }
+
+    /// <summary>Píxeles transparentes bajo las suelas en los dibujos (procesar_arte.py).</summary>
+    private const float MargenPies = 5f;
 
     private Sprite2D cuerpo = null!;
     private readonly Queue<Vector2> ruta = new();
@@ -127,6 +130,14 @@ public partial class Personaje : Node2D
         Texture2D? textura = DeEspaldas && Espalda is not null ? Espalda : Frente;
         if (textura is not null && cuerpo.Texture != textura)
             cuerpo.Texture = textura;
+        if (cuerpo.Texture is not null)
+        {
+            // Regla de procesar_arte.py: pies centrados en horizontal y 5 px de margen
+            // bajo las suelas. Así cada dibujo puede tener su tamaño y el espejo no lo mueve.
+            Vector2 tam = cuerpo.Texture.GetSize();
+            cuerpo.Centered = false;
+            cuerpo.Offset = new Vector2(-tam.X / 2f, -(tam.Y - MargenPies));
+        }
         cuerpo.FlipH = MiraIzquierda;
     }
 }

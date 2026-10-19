@@ -109,7 +109,8 @@ transparente o magenta y con la plantilla de perspectiva adjunta para la escala.
 1. Piezas: `herramientas/procesar_pieza.py <pieza> <imagen>` quita el magenta, encaja la
    pintura sobre la silueta, mide cuánto coincide (por debajo del 92 % no la acepta) y
    la deja en `arte/piezas/`. Figuras: `herramientas/procesar_arte.py` (sin fondo y a la
-   altura del juego).
+   altura del juego); con `poses`, la imagen con las dos poses se parte en `_se` y `_ne`
+   con la misma escala y los pies centrados (el juego coloca el dibujo por los pies).
 2. La zona por la que se camina, los obstáculos y los recortes que tapan al pesquisidor
    (columnas, el carro en tiras) salen de la misma geometría que la pieza.
 3. Coloco los puntos de interés, las luces que parpadean y el punto de entrada.
