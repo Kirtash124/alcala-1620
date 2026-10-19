@@ -4,11 +4,21 @@
 Solo para el escenario provisional. Con arte definitivo, los polígonos se dibujan
 a mano en el editor de Godot (ver docs/MONTAR_UN_LUGAR.md) y este script deja de usarse.
 """
+import argparse
 import json
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 datos = json.loads((RAIZ / "herramientas/datos/calle_mayor.json").read_text(encoding="utf-8"))
+
+# Qué fondo usa la escena: la maqueta con texturas (por defecto) o el dibujo provisional.
+FONDOS = {
+    "texturas": "res://arte/fondos/calle_mayor_texturas.png",
+    "provisional": "res://arte/fondos/calle_mayor.png",
+}
+opciones = argparse.ArgumentParser(description=__doc__)
+opciones.add_argument("--fondo", choices=FONDOS, default="texturas")
+datos["fondo"] = FONDOS[opciones.parse_args().fondo]
 
 
 def v2(pt):

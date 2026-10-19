@@ -45,6 +45,14 @@ El arte llega como imágenes planas (ChatGPT), sin mapas de profundidad. Por eso
   justo lo que peor hace.
 - **Luz**: tono general con `CanvasModulate` y luces que parpadean encima.
 
+Prueba en curso (octubre de 2026): **maqueta con texturas**. La geometría del escenario
+se construye por código (`herramientas/maqueta_calle_mayor.py`) y se recubre con texturas
+repetibles hechas con ChatGPT (`arte/entrada/texturas/`). Garantiza cámara y escala
+exactas, y la zona transitable y los oclusores salen de la misma geometría. Se compara
+con un fondo pintado entero por ChatGPT antes de decidir el método definitivo. La escena
+usa el fondo con texturas; `generar_calle_mayor.py --fondo provisional` vuelve al dibujo
+provisional.
+
 Limitaciones conocidas:
 
 - Lo que la imagen no pinta no existe: no se puede «ver detrás» de un voladizo.

@@ -24,7 +24,9 @@ dotnet test pruebas/Reglas.Pruebas                   # pruebas unitarias de regl
 $G --headless --path . res://pruebas/humo/PruebaHumo.tscn            # prueba de humo (código de salida 0 = bien)
 xvfb-run -a -s "-screen 0 1920x1080x24" $G --path . --rendering-driver opengl3 \
     --resolution 1920x1080 res://pruebas/humo/PruebaHumo.tscn -- --capturas=$PWD/pruebas/salida/capturas
-python3 herramientas/arte_provisional.py && python3 herramientas/generar_calle_mayor.py   # rehacer escenario provisional
+python3 herramientas/arte_provisional.py            # datos de la calle (JSON) y dibujo provisional
+python3 herramientas/maqueta_calle_mayor.py         # fondo de la calle con texturas de ChatGPT
+python3 herramientas/generar_calle_mayor.py [--fondo provisional]   # escena CalleMayor.tscn
 python3 herramientas/plantillas_arte.py              # plantillas para ChatGPT (docs/arte)
 python3 herramientas/procesar_arte.py fondo|figura entrada.png salida.png
 ```

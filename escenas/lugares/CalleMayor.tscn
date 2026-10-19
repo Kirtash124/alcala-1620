@@ -1,7 +1,7 @@
 [gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://codigo/Juego/Lugar.cs" id="1"]
-[ext_resource type="Texture2D" path="res://arte/fondos/calle_mayor.png" id="2"]
+[ext_resource type="Texture2D" path="res://arte/fondos/calle_mayor_texturas.png" id="2"]
 [ext_resource type="Script" path="res://codigo/Juego/Oclusor.cs" id="3"]
 [ext_resource type="Script" path="res://codigo/Juego/PuntoDeInteres.cs" id="4"]
 [ext_resource type="Script" path="res://codigo/Juego/Personaje.cs" id="5"]
@@ -58,7 +58,7 @@ polygon = PackedVector2Array(2092.8, 993.5, 2141.7, 1017.9, 2092.8, 1042.3, 2043
 
 [node name="Obstaculo8" type="Polygon2D" parent="Obstaculos"]
 color = Color(1, 0.2, 0.2, 0.35)
-polygon = PackedVector2Array(614.5, 733.3, 816.9, 834.5, 721.4, 882.3, 519.0, 781.1)
+polygon = PackedVector2Array(614.5, 733.3, 855.1, 853.6, 759.6, 901.4, 519.0, 781.1)
 
 [node name="Obstaculo9" type="Polygon2D" parent="Obstaculos"]
 color = Color(1, 0.2, 0.2, 0.35)
@@ -135,8 +135,8 @@ LineaBase = 892.0
 [node name="Barriles" type="Polygon2D" parent="Entidades"]
 script = ExtResource("3")
 texture = ExtResource("2")
-polygon = PackedVector2Array(1589.0, 1149.0, 1611.0, 1160.0, 1646.0, 1200.0, 1589.0, 1320.0, 1531.0, 1293.0, 1531.0, 1268.0)
-LineaBase = 1302.0
+polygon = PackedVector2Array(1517.0, 1158.0, 1518.0, 1155.0, 1520.0, 1151.0, 1523.0, 1148.0, 1528.0, 1145.0, 1533.0, 1143.0, 1540.0, 1141.0, 1547.0, 1140.0, 1554.0, 1140.0, 1561.0, 1140.0, 1568.0, 1141.0, 1575.0, 1143.0, 1581.0, 1145.0, 1585.0, 1148.0, 1589.0, 1151.0, 1623.0, 1191.0, 1625.0, 1195.0, 1626.0, 1198.0, 1626.0, 1291.0, 1625.0, 1295.0, 1623.0, 1298.0, 1620.0, 1301.0, 1615.0, 1304.0, 1609.0, 1306.0, 1603.0, 1308.0, 1596.0, 1309.0, 1589.0, 1310.0, 1581.0, 1309.0, 1574.0, 1308.0, 1568.0, 1306.0, 1562.0, 1304.0, 1558.0, 1301.0, 1554.0, 1298.0, 1520.0, 1258.0, 1518.0, 1255.0, 1517.0, 1251.0)
+LineaBase = 1310.0
 
 [node name="Cadaver" type="Node2D" parent="Entidades"]
 position = Vector2(1355.5, 744.8)
@@ -171,7 +171,7 @@ Temblor = 0.22
 [node name="Luces" type="Node2D" parent="."]
 
 [node name="VelaHornacina" type="PointLight2D" parent="Luces"]
-position = Vector2(2052.7, 693.7)
+position = Vector2(1973.6, 689.5)
 script = ExtResource("9")
 color = Color(1, 0.78, 0.45, 1)
 texture_scale = 1.7
@@ -212,10 +212,10 @@ Nudo = "hornacina"
 
 [node name="Zona" type="Polygon2D" parent="Puntos/Hornacina"]
 color = Color(1, 0.85, 0.2, 0.3)
-polygon = PackedVector2Array(2024.0, 713.8, 2089.0, 746.3, 2089.0, 634.1, 2024.0, 601.6)
+polygon = PackedVector2Array(1945.7, 712.1, 2010.7, 744.6, 2010.7, 660.4, 1945.7, 627.9)
 
 [node name="Llegada" type="Marker2D" parent="Puntos/Hornacina"]
-position = Vector2(2004.9, 874.7)
+position = Vector2(1926.6, 835.5)
 
 [node name="Salida" type="Node2D" parent="Puntos"]
 script = ExtResource("4")

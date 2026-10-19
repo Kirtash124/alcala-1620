@@ -34,6 +34,9 @@ FONDO_GALERIA = -2.0  # y del muro interior del soportal
 ALTO_SOPORTAL = 3.6   # altura libre hasta la viga (m)
 FRENTE = 0.25         # y de la fachada alta (sobre las columnas)
 COLUMNAS_X = [1.5 + 3 * k for k in range(7)] + [22.0]
+Z_HORNACINA = 1.0     # altura de la repisa de la hornacina (m)
+# Borde izquierdo de la hornacina: centrada en pantalla entre las columnas de 16,5 y 19,5 m.
+X_HORNACINA = 15.725
 
 
 # --------------------------------------------------------------- utilidades
@@ -85,6 +88,25 @@ def caja(x0, y0, x1, y1, z0, z1):
     lateral = [p(x1, y0, z0), p(x1, y1, z0), p(x1, y1, z1), p(x1, y0, z1)]
     tapa = [p(x0, y0, z1), p(x1, y0, z1), p(x1, y1, z1), p(x0, y1, z1)]
     return frontal, lateral, tapa
+
+
+def envolvente(puntos):
+    """Envolvente convexa de puntos 2D (cadena monótona de Andrew)."""
+    pts = sorted(set((round(a, 2), round(b, 2)) for a, b in puntos))
+
+    def giro(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    inferior, superior = [], []
+    for q in pts:
+        while len(inferior) >= 2 and giro(inferior[-2], inferior[-1], q) <= 0:
+            inferior.pop()
+        inferior.append(q)
+    for q in reversed(pts):
+        while len(superior) >= 2 and giro(superior[-2], superior[-1], q) <= 0:
+            superior.pop()
+        superior.append(q)
+    return inferior[:-1] + superior[:-1]
 
 
 def dibujar_caja(lienzo, x0, y0, x1, y1, z0, z1, rgb, grano=0.06):
@@ -150,23 +172,22 @@ def fondo() -> tuple[Image.Image, dict]:
         rellenar(lienzo, dintel, color("#5e4632"), 0.08, 0.1)
         d.line([p(px_ + 0.65, FONDO_GALERIA, 0.05), p(px_ + 0.65, FONDO_GALERIA, 2.35)], fill=color("#2c1f16"), width=3)
 
-    # Hornacina con su vela, en x = 17.
-    hx = 16.75
-    nicho = [p(hx, FONDO_GALERIA, 1.35), p(hx + 0.55, FONDO_GALERIA, 1.35)]
+    # Hornacina con su vela. La repisa va a 1 m: más arriba la taparía la viga.
+    hx, z0 = X_HORNACINA, Z_HORNACINA
+    nicho = [p(hx, FONDO_GALERIA, z0), p(hx + 0.55, FONDO_GALERIA, z0)]
     for a in np.linspace(0, math.pi, 12):
-        nicho.append(p(hx + 0.275 + 0.275 * math.cos(a), FONDO_GALERIA, 2.0 + 0.275 * math.sin(a)))
-    nicho = [nicho[0], nicho[1]] + nicho[2:]
+        nicho.append(p(hx + 0.275 + 0.275 * math.cos(a), FONDO_GALERIA, z0 + 0.4 + 0.275 * math.sin(a)))
     rellenar(lienzo, nicho, color("#3a3029"), 0.05, 0.05)
-    cruz_v = [p(hx + 0.26, FONDO_GALERIA, 1.75), p(hx + 0.29, FONDO_GALERIA, 1.75), p(hx + 0.29, FONDO_GALERIA, 2.15), p(hx + 0.26, FONDO_GALERIA, 2.15)]
-    cruz_h = [p(hx + 0.17, FONDO_GALERIA, 2.02), p(hx + 0.38, FONDO_GALERIA, 2.02), p(hx + 0.38, FONDO_GALERIA, 2.06), p(hx + 0.17, FONDO_GALERIA, 2.06)]
+    cruz_v = [p(hx + 0.26, FONDO_GALERIA, z0 + 0.2), p(hx + 0.29, FONDO_GALERIA, z0 + 0.2), p(hx + 0.29, FONDO_GALERIA, z0 + 0.55), p(hx + 0.26, FONDO_GALERIA, z0 + 0.55)]
+    cruz_h = [p(hx + 0.17, FONDO_GALERIA, z0 + 0.42), p(hx + 0.38, FONDO_GALERIA, z0 + 0.42), p(hx + 0.38, FONDO_GALERIA, z0 + 0.46), p(hx + 0.17, FONDO_GALERIA, z0 + 0.46)]
     rellenar(lienzo, cruz_v, color("#b8955a"), 0.02, 0)
     rellenar(lienzo, cruz_h, color("#b8955a"), 0.02, 0)
-    vela = [p(hx + 0.23, FONDO_GALERIA + 0.05, 1.37), p(hx + 0.32, FONDO_GALERIA + 0.05, 1.37),
-            p(hx + 0.32, FONDO_GALERIA + 0.05, 1.6), p(hx + 0.23, FONDO_GALERIA + 0.05, 1.6)]
+    vela = [p(hx + 0.23, FONDO_GALERIA + 0.05, z0), p(hx + 0.32, FONDO_GALERIA + 0.05, z0),
+            p(hx + 0.32, FONDO_GALERIA + 0.05, z0 + 0.23), p(hx + 0.23, FONDO_GALERIA + 0.05, z0 + 0.23)]
     rellenar(lienzo, vela, color("#e8dfc8"), 0.02, 0)
-    llama = p(hx + 0.275, FONDO_GALERIA + 0.05, 1.66)
+    llama = p(hx + 0.275, FONDO_GALERIA + 0.06, z0 + 0.29)
     d.ellipse([llama[0] - 4, llama[1] - 9, llama[0] + 4, llama[1] + 3], fill=color("#ffd27a"))
-    hornacina_centro = p(hx + 0.275, FONDO_GALERIA, 1.75)
+    hornacina_centro = p(hx + 0.275, FONDO_GALERIA, z0 + 0.35)
 
     # Sombra del soportal: el muro y el suelo bajo la galería quedan en penumbra.
     sombrear(lienzo, muro, 0.35, 6)
@@ -264,10 +285,13 @@ def fondo() -> tuple[Image.Image, dict]:
         for zz in (0.18, 0.77):
             aro = [p(bx + r * math.cos(a), by + r * math.sin(a), zz) for a in np.linspace(-math.pi / 4, 3 * math.pi / 4, 12)]
             d.line(aro, fill=color("#2a2826"), width=4)
-    silueta_barriles = [p(19.1, 6.2, 0.97), p(19.4, 6.2, 0.97), p(20.15, 6.5, 0.97), p(20.15, 7.25, 0),
-                        p(19.4, 7.25, -0.02), p(19.1, 6.95, 0)]
+    # Silueta exacta de los dos barriles: envolvente de sus círculos de base y de tapa.
+    contorno = [p(bx + 0.345 * math.cos(a), by + 0.345 * math.sin(a), z)
+                for bx, by in [(19.0, 6.55), (19.75, 6.85)] for z in (-0.02, 0.97)
+                for a in np.linspace(0, 2 * math.pi, 32, endpoint=False)]
+    silueta_barriles = envolvente(contorno)
     oclusores.append({"nombre": "Barriles", "poligono": [list(map(round, pt)) for pt in silueta_barriles],
-                      "linea_base": round(p(19.75, 7.18)[1]), "siempre_delante": False})
+                      "linea_base": round(max(q[1] for q in silueta_barriles)), "siempre_delante": False})
 
     # Viñeteado suave para centrar la mirada.
     yy, xx = np.mgrid[0:H, 0:W]
@@ -281,7 +305,7 @@ def fondo() -> tuple[Image.Image, dict]:
     huecos = []
     for cx in COLUMNAS_X[:-1]:
         huecos.append([p(cx - 0.32, -0.32), p(cx + 0.32, -0.32), p(cx + 0.32, 0.32), p(cx - 0.32, 0.32)])
-    huecos.append([p(6.1, 5.95), p(8.75, 5.95), p(8.75, 7.2), p(6.1, 7.2)])            # carro
+    huecos.append([p(6.1, 5.95), p(9.25, 5.95), p(9.25, 7.2), p(6.1, 7.2)])            # carro
     huecos.append([p(18.55, 6.15), p(20.15, 6.15), p(20.15, 7.25), p(18.55, 7.25)])  # barriles
     huecos.append([p(10.25, 0.75), p(12.0, 0.75), p(12.0, 1.75), p(10.25, 1.75)])    # cadáver
     huecos.append([p(12.2, 2.15), p(12.85, 2.15), p(12.85, 2.85), p(12.2, 2.85)])    # alguacil
@@ -305,9 +329,11 @@ def fondo() -> tuple[Image.Image, dict]:
                          "llegada": r2([p(12.3, 3.9)])[0]},
             "cadaver": {"zona": r2([p(10.2, 0.7), p(12.05, 0.7), p(12.05, 1.8), p(10.2, 1.8)]),
                         "llegada": r2([p(10.9, 2.55)])[0]},
-            "hornacina": {"zona": r2([p(16.6, FONDO_GALERIA, 1.25), p(17.45, FONDO_GALERIA, 1.25),
-                                      p(17.45, FONDO_GALERIA, 2.45), p(16.6, FONDO_GALERIA, 2.45)]),
-                          "llegada": r2([p(17.05, -1.3)])[0]},
+            "hornacina": {"zona": r2([p(X_HORNACINA - 0.15, FONDO_GALERIA, Z_HORNACINA - 0.15),
+                                      p(X_HORNACINA + 0.7, FONDO_GALERIA, Z_HORNACINA - 0.15),
+                                      p(X_HORNACINA + 0.7, FONDO_GALERIA, Z_HORNACINA + 0.75),
+                                      p(X_HORNACINA - 0.15, FONDO_GALERIA, Z_HORNACINA + 0.75)]),
+                          "llegada": r2([p(X_HORNACINA + 0.3, -1.3)])[0]},
             "salida": {"zona": r2([p(22.6, 1.0), p(24.6, 1.0), p(24.6, 6.5), p(22.6, 6.5)]),
                        "llegada": r2([p(23.4, 3.6)])[0]},
         },
