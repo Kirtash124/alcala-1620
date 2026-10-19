@@ -21,7 +21,7 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw
-from scipy.ndimage import binary_dilation, gaussian_filter
+from scipy.ndimage import binary_dilation, distance_transform_edt, gaussian_filter
 
 from isometria import AX, AY, ZH
 
@@ -69,8 +69,21 @@ def igualar(ident, como):
     img = np.asarray(Image.open(ruta).convert("RGBA")).astype(np.float32)
     # Peso 1 en todo el suelo, que se apaga en unos 6 px por fuera (junto a las
     # columnas y el zócalo) para que no quede un borde.
-    peso = np.clip(gaussian_filter(mascara(ident, SUELO).astype(np.float32), 3.0) * 2, 0, 1)[..., None]
-    img[..., :3] = np.clip(img[..., :3] * (1 + peso * (ganancia - 1)), 0, 255)
+    peso = np.clip(gaussian_filter(mascara(ident, SUELO).astype(np.float32), 3.0) * 2, 0, 1)
+    # El borde de la pieza (los 3 o 4 px junto a lo transparente) se deja como está: son
+    # píxeles a medias y, al subirles el azul, salían puntitos rosas y azules en el
+    # bordillo.
+    hasta_borde = distance_transform_edt(img[..., 3] > 8)
+    peso = (peso * np.clip((hasta_borde - 1) / 3, 0, 1))[..., None]
+    antes = img[..., :3].copy()
+    nuevo = antes * (1 + peso * (ganancia - 1))
+    # La ganancia sube mucho el azul; en los píxeles rojizos (juntas, el bordillo) eso
+    # los volvía rosas. En ellos el azul no pasa del verde más lo que ya le sacaba.
+    r, g, b = antes[..., 0], antes[..., 1], antes[..., 2]
+    tope = nuevo[..., 1] + np.maximum(np.minimum(r, b) - g, 0)
+    rojizo = nuevo[..., 0] > nuevo[..., 1]
+    nuevo[..., 2] = np.where(rojizo, np.minimum(nuevo[..., 2], np.maximum(tope, b)), nuevo[..., 2])
+    img[..., :3] = np.clip(nuevo, 0, 255)
     Image.fromarray(img.astype(np.uint8), "RGBA").save(ruta, optimize=True)
     print(f"{ident}: suelo del soportal ×({ganancia[0]:.2f}, {ganancia[1]:.2f}, {ganancia[2]:.2f}) "
           f"para parecerse a {', '.join(como)}")

@@ -16,8 +16,11 @@ cuatro trozos con solape (docs/arte/suelo/suelo_N_luz.png; ver docs/arte/suelo/R
    los dos trozos más se parecen (como en el «image quilting» de Efros y Freeman, 2001),
    con un fundido corto. Un fundido ancho dejaba fantasmas, porque ChatGPT no pinta
    igual el mismo charco en dos trozos.
-4. Donde no hay pintura (un trozo aún sin pintar, o bajo las casas) queda el render
-   (herramientas/datos/suelo_render.png).
+4. Ajusta el brillo a la noche de la escena (ajustar_a_la_noche; --tal-cual para no
+   hacerlo): solo la luz, no el color de la pintura.
+5. Donde no hay pintura (un trozo aún sin pintar, o bajo las casas) queda el render
+   (herramientas/datos/suelo_render.png). Las sombras del carro, los barriles y las
+   casas no hacen falta en la pintura: las pone el juego (Pieza.Sombra).
 
 Guarda arte/fondos/calle_mayor_suelo.png, copia cada pintura original en
 arte/entrada/suelo/ y deja una comprobación en pruebas/salida/suelo_comprobacion.png.
@@ -37,6 +40,11 @@ RAIZ = Path(__file__).resolve().parent.parent
 DATOS = RAIZ / "herramientas/datos"
 ENTRADA = RAIZ / "arte/entrada/suelo"
 FUNDIDO = 5.0          # sigma, en px del juego, del fundido a lo largo de la costura
+# Brillo de la pintura respecto al render. Medido en las losas de los soportales: las
+# casas que pintó ChatGPT quedaron un 20-25 % más oscuras que el render, y el suelo
+# tiene que ir con ellas.
+NOCHE = 0.8
+CONTRASTE_MAX = 1.4    # exponente máximo de la curva de ajustar_a_la_noche
 
 
 def quitar_magenta(img):
@@ -57,7 +65,8 @@ def limpiar_bordes(pint, mascara):
     magenta puro (quitar_magenta no la borra entera) y en el juego se ve como un ribete
     a lo largo de las casas. Esos píxeles se rellenan con el color de la pintura limpia
     más cercana, y la silueta pasa a ser la de la máscara del render (exacta), ensanchada
-    3 px bajo las casas para que no quede ninguna rendija entre suelo y casa."""
+    12 px bajo las casas: el pie de las casas sale dentado en el render (lo mordían las
+    piedras de Blender) y por esas muescas no debe asomar el negro de debajo."""
     px = np.asarray(pint).astype(np.float32)
     rgb, alfa = px[..., :3], px[..., 3] / 255.0
     r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
@@ -65,7 +74,7 @@ def limpiar_bordes(pint, mascara):
     # vez; en la pelusa morada, sí.
     sucio = binary_dilation((np.minimum(r, b) - g > 10) | (alfa < 0.98), iterations=1)
     limpio = mascara & ~sucio
-    zona = binary_dilation(mascara, iterations=3)
+    zona = binary_dilation(mascara, iterations=12)
     _, (iy, ix) = distance_transform_edt(~limpio, return_indices=True)
     relleno = np.where((zona & ~limpio)[..., None], rgb[iy, ix], rgb)
     salida = np.dstack([relleno, zona * 255.0]).astype(np.uint8)
@@ -201,6 +210,30 @@ def coser(capas, rects, lienzo):
     return color, alfa
 
 
+def ajustar_a_la_noche(color, alfa, render):
+    """Lleva el brillo de la pintura al de la noche de la escena: una curva de potencia
+    (Y' = A·Y^g) que pone sus percentiles 5 a 95 de luminancia en los del render por
+    NOCHE. Multiplica los tres canales por igual, así que el color de la pintura no
+    cambia, solo su luz. Sin esto, un suelo pintado de día o con niebla queda mucho
+    más claro que las casas."""
+    sel = alfa > 0.5
+    pesos = np.array([0.2126, 0.7152, 0.0722], np.float32)
+    y = np.maximum((color * pesos).sum(-1), 1e-4)
+    yr = np.maximum((render * pesos).sum(-1), 1e-4)
+    p = np.arange(5, 96, 5)
+    origen = np.percentile(y[sel], p)
+    destino = np.percentile(yr[sel], p) * NOCHE
+    g, _ = np.polyfit(np.log(origen), np.log(destino), 1)
+    # El contraste del render es el de su empedrado; a una pintura suave no se le
+    # sube más de CONTRASTE_MAX, que la textura se vuelve áspera. La mediana sí se iguala.
+    g = float(np.clip(g, 1.0, CONTRASTE_MAX))
+    log_a = np.log(np.median(destino)) - g * np.log(np.median(origen))
+    factor = np.where(sel, np.exp(log_a) * y ** g / y, 1.0)[..., None]
+    print(f"Noche: luminancia mediana {np.median(y[sel]) * 255:.0f} → {np.median(destino) * 255:.0f} "
+          f"(curva Y' = {np.exp(log_a):.2f}·Y^{g:.2f})")
+    return np.clip(color * factor, 0, 1)
+
+
 def main():
     ficha = json.loads((DATOS / "suelo.json").read_text(encoding="utf-8"))
     lienzo = tuple(ficha["lienzo"])
@@ -209,7 +242,9 @@ def main():
     ENTRADA.mkdir(parents=True, exist_ok=True)
 
     # Pinturas nuevas pasadas como suelo_N=ruta: se guardan en arte/entrada/suelo.
-    for arg in sys.argv[1:]:
+    # Con --tal-cual no se ajusta el brillo a la noche de la escena.
+    tal_cual = "--tal-cual" in sys.argv
+    for arg in (a for a in sys.argv[1:] if not a.startswith("--")):
         ident, ruta = arg.split("=", 1)
         if ident not in {t["id"] for t in teselas}:
             sys.exit(f"No hay ningún trozo llamado {ident}")
@@ -236,6 +271,8 @@ def main():
         if capa is not None:
             capa[..., :3] = np.clip(capa[..., :3] * g[i], 0, 1)
     color, alfa = coser(capas, rects, lienzo)
+    if not tal_cual:
+        color = ajustar_a_la_noche(color, alfa, render)
     # Donde no hay pintura (bajo las casas o en un trozo sin pintar) queda el render.
     final = color * alfa[..., None] + render * (1 - alfa[..., None])
     salida = Image.fromarray((np.clip(final, 0, 1) * 255).astype(np.uint8))

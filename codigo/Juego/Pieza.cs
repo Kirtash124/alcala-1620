@@ -39,6 +39,18 @@ public partial class Pieza : Node2D
     /// <summary>Línea base de cada recorte (y en píxeles de la imagen).</summary>
     [Export] public float[] RecortesBases { get; set; } = Array.Empty<float>();
 
+    /// <summary>
+    /// Sombra que la pieza echa en el suelo (negro con opacidad, renderizada en Blender).
+    /// Se dibuja encima del suelo y debajo de todo lo demás, así el suelo no tiene que
+    /// traerla pintada y, si la pieza se quita, su sombra se va con ella.
+    /// </summary>
+    [Export] public Texture2D? Sombra { get; set; }
+    /// <summary>Píxel de la imagen de la sombra que cae en la posición del nodo.</summary>
+    [Export] public Vector2 SombraAncla { get; set; }
+
+    /// <summary>Capa de las sombras: por encima del suelo (−10), por debajo de las casas (−1).</summary>
+    private const int CapaSombra = -5;
+
     public override void _Ready()
     {
         YSortEnabled = true;
@@ -52,6 +64,18 @@ public partial class Pieza : Node2D
         {
             RemoveChild(hijo);
             hijo.QueueFree();
+        }
+        if (Sombra is not null)
+        {
+            var sombra = new Sprite2D
+            {
+                Name = "Sombra",
+                Texture = Sombra,
+                Centered = false,
+                Offset = -SombraAncla,
+                ZIndex = CapaSombra,
+            };
+            Generado(sombra);
         }
         if (Imagen is null)
             return;

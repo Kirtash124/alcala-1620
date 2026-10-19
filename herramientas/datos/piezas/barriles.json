@@ -66,5 +66,12 @@
    643.13,
    1392.54
   ]
+ },
+ "sombra": {
+  "imagen": "res://arte/piezas/barriles_sombra.png",
+  "ancla": [
+   94.2,
+   99.7
+  ]
  }
 }

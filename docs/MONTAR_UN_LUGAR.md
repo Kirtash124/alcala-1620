@@ -37,6 +37,10 @@ Cada `Pieza` se coloca en su punto de origen en el suelo y trae:
   cada una con su línea base, para poder pasar por delante de una punta del carro y por
   detrás de la otra.
 - **Huella**: lo que ocupa en el suelo; se convierte en obstáculo al cargar el lugar.
+- **Sombra** y **SombraAncla**: la sombra que la pieza echa en el suelo, renderizada en
+  Blender con un atrapasombras (`kit_calle_mayor.py --sombras`). Se dibuja encima del
+  suelo y debajo de todo lo demás, así que el suelo (pintado o no) no tiene que traer
+  las sombras del carro o de los barriles, y si se quita una pieza su sombra se va con ella.
 
 Todo eso lo escribe `herramientas/generar_calle_mayor.py` a partir de las fichas de
 `herramientas/datos/piezas/` (las genera `herramientas/kit_calle_mayor.py`). No se dibuja

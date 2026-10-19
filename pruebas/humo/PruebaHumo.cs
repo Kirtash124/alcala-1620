@@ -93,6 +93,9 @@ public partial class PruebaHumo : Node
         await Conversar("Hornacina", null);
         await Conversar("Alguacil", "03_alguacil");
         await Conversar("Salida", null);
+        // Junto a la salida se ve la bocacalle y el borde derecho del suelo.
+        await Fotogramas(10);
+        await Capturar("03b_salida");
 
         Comprobar(juego.Narrador.Errores.Count == 0, "Ink dio errores: " + string.Join(" | ", juego.Narrador.Errores));
         Comprobar(juego.Pesquisa.Tiene("cera"), "no se anotó la pista de la cera");

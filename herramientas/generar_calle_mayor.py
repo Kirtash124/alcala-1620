@@ -71,13 +71,16 @@ for p in datos["piezas"]:
     f = datos["fichas"][p["id"]]
     huellas = [[((x - y) * AX, (x + y) * AY) for x, y in h] for h in f["huella"]]
     recortes = f["recortes"]
+    sombra = {}
+    if f.get("sombra"):
+        sombra = {"Sombra": recurso("Texture2D", f["sombra"]["imagen"]), "SombraAncla": v2(f["sombra"]["ancla"])}
     nodo(p["nodo"], "Node2D", "Entidades", script=recurso("Script", "res://codigo/Juego/Pieza.cs"),
          position=v2(p["posicion"]), Imagen=recurso("Texture2D", f["imagen"]), Ancla=v2(f["ancla"]),
          Fondo="true" if f["fondo"] else "false",
          HuellaPuntos=poly([q for h in huellas for q in h]), HuellaTamanos=enteros(len(h) for h in huellas),
          RecortesPuntos=poly([q for r in recortes for q in r["poligono"]]),
          RecortesTamanos=enteros(len(r["poligono"]) for r in recortes),
-         RecortesBases=reales(r["base"] for r in recortes))
+         RecortesBases=reales(r["base"] for r in recortes), **sombra)
 
 alg = datos["alguacil"]
 textura_alg = recurso("Texture2D", "res://arte/personajes/alguacil_se.png")

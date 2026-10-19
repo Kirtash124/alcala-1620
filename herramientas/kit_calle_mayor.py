@@ -6,6 +6,7 @@ modela con geometría de verdad (cada teja, cada tabla, cada clavo, cada balaust
 y se renderiza con la cámara exacta del juego. Para cada pieza salen:
 
   arte/piezas/<id>.png                   pieza para el juego, con la luz de noche ya hecha
+  arte/piezas/<id>_sombra.png            sombra que echa en el suelo (el juego la pone encima)
   docs/arte/piezas/<id>_luz.png          estudio de luz a tamaño de ChatGPT, sobre magenta
   docs/arte/piezas/<id>_maqueta.png      maqueta de forma (arcilla), sobre magenta
   herramientas/datos/piezas/<id>.json    ficha: ancla, huella, recortes, escala de la maqueta
@@ -19,7 +20,7 @@ la imagen pero siguen haciendo sombra y reflejando luz, así que las sombras ent
 vecinas son las de verdad.
 
 Requisitos: pip install bpy (Python 3.13), scikit-image.
-Uso:  python3 herramientas/kit_calle_mayor.py [--solo casa_3 ...] [--sin-suelo] [--rapido]
+Uso:  python3 herramientas/kit_calle_mayor.py [--solo casa_3 ...] [--sin-suelo] [--rapido] [--sombras]
 
 Coordenadas del mundo en metros: x a lo largo de la calle (hacia abajo a la derecha en
 pantalla), y hacia la calle (abajo a la izquierda), z arriba. Ver isometria.py.
@@ -630,10 +631,115 @@ def renderizar_pieza(pieza, objetos, siluetas, ilum, muestras, temporal, recorta
                     "luz": f"docs/arte/piezas/{pieza.id}_luz.png", "tamano": [cw, ch],
                     "escala": round(s, 5), "ancla": [round(ancla_m[0], 2), round(ancla_m[1], 2)]},
     }
+    sombra = ficha_sombra(pieza, objetos)
+    if sombra:
+        ficha["sombra"] = sombra
     (DIR_FICHAS / f"{pieza.id}.json").write_text(json.dumps(ficha, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"  {pieza.id}: {ancho}×{alto} px en el juego; maqueta {cw}×{ch} a ×{s:.2f}; {time.time() - t0:.0f} s",
           flush=True)
     return ficha
+
+
+SOMBRA_MARGEN = 24         # px alrededor de la sombra (penumbra y lo que tapa del cielo)
+SOMBRA_CURVA = 0.6         # de oscurecimiento lineal a oscurecimiento en pantalla
+
+
+def caja_sombra(objetos, origen):
+    """Caja en pantalla (ancho, alto, ancla) de la sombra que la pieza echa en el suelo:
+    la de sus vértices llevados a z = 0 en la dirección de la luna, más su base."""
+    pts = np.concatenate([BL.vertices(o) for o in objetos])
+    luz = np.array(LUNA) / np.linalg.norm(LUNA)
+    z = np.clip(pts[:, 2], 0, None)
+    proyectados = pts - (z / luz[2])[:, None] * luz
+    q = np.concatenate([proyectados, pts]) * np.array([1, 1, 0]) - np.array(origen) * np.array([1, 1, 0])
+    sx = (q[:, 0] - q[:, 1]) * AX
+    sy = (q[:, 0] + q[:, 1]) * AY
+    m = SOMBRA_MARGEN
+    ancho = int(math.ceil(sx.max() - sx.min())) + 2 * m
+    alto = int(math.ceil(sy.max() - sy.min())) + 2 * m
+    return ancho, alto, (-sx.min() + m, -sy.min() + m)
+
+
+class AtrapaSombras:
+    """Plano en z = 0 que solo recoge sombras (shadow catcher de Cycles). Con él, cada
+    pieza deja su sombra en una imagen aparte y el juego la pone sobre el suelo, sea
+    cual sea su pintura: así el suelo no tiene que traer pintadas las sombras."""
+
+    def __init__(self):
+        m = BL.Malla("atrapa_sombras", semilla=1)
+        m.caja(-30, -30, -0.02, 60, 40, 0.0, "tierra")
+        self.plano = m.objeto(MAT.obtener, "atrapa_sombras")
+        self.plano.is_shadow_catcher = True
+        self.plano.hide_render = True
+
+    def renderizar(self, pieza, objetos, ilum, muestras, temporal):
+        """Sombra de la pieza en arte/piezas/<id>_sombra.png: negro con la opacidad que
+        oscurece el suelo. Solo cuentan la luna y el cielo (las velas no)."""
+        escena = BL.bpy.context.scene
+        propios = {o.name for o in objetos}
+        antes = {o.name: o.hide_render for o in escena.objects}
+        for o in escena.objects:
+            if o.type == "MESH":
+                o.hide_render = not (o.name in propios or o == self.plano)
+                o.visible_camera = o == self.plano
+                o.is_holdout = False
+        for luz in ilum.calidas:
+            luz.hide_render = True
+        ancho, alto, ancla = caja_sombra(objetos, pieza.origen())
+        BL.encuadrar(ancho, alto, ancla, 1.0, pieza.origen())
+        tmp = temporal / f"{pieza.id}_sombra.png"
+        BL.renderizar(tmp, muestras)
+        for o in escena.objects:
+            o.hide_render = antes.get(o.name, o.hide_render)
+        for luz in ilum.calidas:
+            luz.hide_render = False
+        # El atrapasombras da cuánto baja la luz (lineal). La pintura del suelo está en
+        # valores de pantalla, donde la misma sombra oscurece menos. El exponente sale
+        # de medir el render del suelo con sus sombras: con AgX y esta exposición, la
+        # razón en pantalla es la lineal elevada a 0,6 (bajo el carro, 0,13 → 0,28).
+        a = np.asarray(Image.open(tmp).convert("RGBA")).astype(np.float32)[..., 3] / 255.0
+        a = 1 - (1 - a) ** SOMBRA_CURVA
+        salida = np.zeros(a.shape + (4,), np.uint8)
+        salida[..., 3] = np.clip(a * 255 + 0.5, 0, 255).astype(np.uint8)
+        Image.fromarray(salida, "RGBA").save(DIR_PIEZAS / f"{pieza.id}_sombra.png", optimize=True)
+        print(f"  sombra de {pieza.id}: {ancho}×{alto} px, opacidad máxima {a.max():.2f}", flush=True)
+
+
+def sombra_sin_lo_tapado(ident):
+    """Las casas tapan su propia sombra (la de bajo el soportal, casi negra), pero su
+    pie sale dentado en el render y por las muescas asomaba ese negro. Se borra la
+    sombra donde está la casa (su silueta cerrada y ensanchada unos px). Solo para las
+    casas: en los objetos sueltos, entre los radios de una rueda o bajo un barril, la
+    sombra sí se ve. Usa la ficha (anclas de la pieza y de la sombra) y el render."""
+    from scipy.ndimage import binary_closing, binary_dilation
+    ficha = json.loads((DIR_FICHAS / f"{ident}.json").read_text(encoding="utf-8"))
+    ruta_sombra = DIR_PIEZAS / f"{ident}_sombra.png"
+    ruta_render = DIR_FICHAS / f"{ident}_render.png"
+    if not (ficha["fondo"] and ficha.get("sombra") and ruta_sombra.exists() and ruta_render.exists()):
+        return
+    sombra = np.asarray(Image.open(ruta_sombra).convert("RGBA")).copy()
+    silueta = np.asarray(Image.open(ruta_render).convert("RGBA"))[..., 3] > 8
+    silueta = binary_dilation(binary_closing(silueta, np.ones((9, 9), bool)), iterations=2)
+    # Un mismo punto del suelo está en (u, v) en la pieza y en (u, v) + (dx, dy) en la sombra.
+    dx = round(ficha["sombra"]["ancla"][0] - ficha["ancla"][0])
+    dy = round(ficha["sombra"]["ancla"][1] - ficha["ancla"][1])
+    h, w = silueta.shape
+    hs, ws = sombra.shape[:2]
+    tapa = np.zeros((hs, ws), bool)
+    x0, y0 = max(0, dx), max(0, dy)
+    x1, y1 = min(ws, dx + w), min(hs, dy + h)
+    tapa[y0:y1, x0:x1] = silueta[y0 - dy:y1 - dy, x0 - dx:x1 - dx]
+    sombra[..., 3] = np.where(tapa, 0, sombra[..., 3])
+    Image.fromarray(sombra, "RGBA").save(ruta_sombra, optimize=True)
+    print(f"  sombra de {ident}: quitada bajo la casa", flush=True)
+
+
+def ficha_sombra(pieza, objetos):
+    """Datos de la sombra para la ficha, si está renderizada."""
+    if not (DIR_PIEZAS / f"{pieza.id}_sombra.png").exists():
+        return None
+    _, _, ancla = caja_sombra(objetos, pieza.origen())
+    return {"imagen": f"res://arte/piezas/{pieza.id}_sombra.png", "ancla": [round(ancla[0], 1), round(ancla[1], 1)]}
 
 
 TESELA = (1536, 1024)      # tamaño de cada trozo del suelo para ChatGPT
@@ -792,6 +898,8 @@ def main():
     args.add_argument("--blend", help="guardar también la escena de Blender en este archivo")
     args.add_argument("--sin-render", action="store_true",
                       help="no renderizar: rehacer solo fichas y escena con las imágenes que ya hay")
+    args.add_argument("--sombras", action="store_true",
+                      help="renderizar solo las sombras de las piezas (y rehacer fichas y escena)")
     a = args.parse_args()
     for d in (DIR_MAQUETAS, DIR_PIEZAS, DIR_FICHAS):
         d.mkdir(parents=True, exist_ok=True)
@@ -802,9 +910,10 @@ def main():
     t0 = time.time()
     BL.reiniciar()
     MAT.vaciar()
-    con_suelo = not (a.sin_suelo or a.sin_render) and (not a.solo or "suelo" in a.solo)
+    con_suelo = not (a.sin_suelo or a.sin_render or a.sombras) and (not a.solo or "suelo" in a.solo)
     todo, luces = construir_calle(suelo_detallado=con_suelo)
     ilum = Iluminacion(luces)
+    atrapa = AtrapaSombras()
     print(f"Calle construida en {time.time() - t0:.0f} s", flush=True)
     if a.blend:
         BL.bpy.ops.wm.save_as_mainfile(filepath=str(Path(a.blend).resolve()))
@@ -813,8 +922,12 @@ def main():
     for clave, (pieza, objetos, siluetas) in todo.items():
         if pieza is None or (a.solo and clave not in a.solo):
             continue
+        if not a.sin_render:
+            atrapa.renderizar(pieza, objetos, ilum, 64 if a.rapido else 192, temporal)
         renderizar_pieza(pieza, objetos, siluetas, ilum, muestras, temporal, recortes_de(todo, clave),
-                         renderizar=not a.sin_render)
+                         renderizar=not (a.sin_render or a.sombras))
+        if not a.sin_render:
+            sombra_sin_lo_tapado(pieza.id)
     if con_suelo:
         print("Suelo de la calle…", flush=True)
         casas = [o for clave, (_, objs, _) in todo.items() if clave.startswith("casa_") for o in objs]

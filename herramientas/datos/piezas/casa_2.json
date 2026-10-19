@@ -305,5 +305,12 @@
    140.52,
    1155.51
   ]
+ },
+ "sombra": {
+  "imagen": "res://arte/piezas/casa_2_sombra.png",
+  "ancla": [
+   98.2,
+   208.5
+  ]
  }
 }

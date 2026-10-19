@@ -39,6 +39,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 DIR_FICHAS = RAIZ / "herramientas/datos/piezas"
 UMBRAL = 0.92
 RADIO_LUZ = 10      # px del juego: por encima de este tamaño manda la luz del render
+DIENTE_MAX = 6      # px: lo más que baja el pie de una pieza al alisarlo (pulir_borde)
 
 
 def _lineal(x):
@@ -70,6 +71,64 @@ def luz_del_render(pintura, render, radio=RADIO_LUZ):
     calida = np.clip((calidez - 0.12) / 0.18, 0, 1) * np.clip((lum - 0.3) / 0.2, 0, 1)
     calida = _desenfoque(calida[..., None], 3)
     return _srgb(transferida * (1 - calida) + P * calida)
+
+
+def pulir_borde(rgba, ventana=11):
+    """Arregla el borde de la pieza, que ahora se dibuja sobre un suelo pintado aparte:
+
+    - El pie. En el render, el suelo de Blender (piedras, barro) tapa a trozos la base
+      de la pieza, y su silueta queda dentada justo donde toca el suelo (el bordillo de
+      los soportales, el fondo de los barriles): en escalera, o con muescas. Sobre otro
+      suelo esos dientes se ven como mordiscos. Se rehace el contorno inferior: primero
+      se rellenan las muescas estrechas (cierre morfológico) y luego se alisan las
+      escaleras a lo largo de las dos pendientes de la proyección (±1/2 px por px): en
+      cada columna el pie baja hasta la recta que pasa por los escalones vecinos. La
+      última fila nueva lleva su fracción de opacidad, para que el borde no quede serrado.
+    - Restos de color en el borde. Los píxeles a medias del borde (y los de la orilla
+      que tiran a magenta) guardan algo del fondo de ChatGPT, que sobre un suelo oscuro
+      se ve como puntitos rosas y azules; se les da el color de la pintura limpia más
+      cercana, dejando su transparencia como estaba.
+    """
+    from scipy.ndimage import distance_transform_edt, grey_closing
+    alfa = rgba[..., 3].astype(np.float32)
+    opaco = alfa > 127
+    h, w = opaco.shape
+    filas = np.arange(h)[:, None]
+    hay = opaco.any(axis=0)
+    pie = np.where(hay, h - 1 - np.argmax(opaco[::-1], axis=0), -1)
+    cerrado = grey_closing(np.where(hay, pie, -10**6), size=ventana).astype(np.float32)
+    # Solo dientes pequeños: donde la silueta cambia de verdad (el lado de una casa, el
+    # hueco entre una rueda y la vara) el pie no se toca.
+    cerrado = np.where(hay, np.clip(cerrado, pie, pie + DIENTE_MAX), -1)
+    # Escaleras: pie(x) = máx. sobre k de pie(x ± k) − k/2, con k hasta la ventana.
+    liso = cerrado.copy()
+    for k in range(1, ventana):
+        for vecino in (np.r_[cerrado[k:], np.full(k, -1e6)], np.r_[np.full(k, -1e6), cerrado[:-k]]):
+            liso = np.maximum(liso, np.where(hay, vecino - 0.5 * k, -1))
+    liso = np.where(hay, np.minimum(liso, pie + DIENTE_MAX), -1)
+    entero = np.floor(liso).astype(int)
+    hueco = (filas > pie[None, :]) & (filas <= entero[None, :]) & ~opaco
+    # La fila siguiente al nuevo pie, con la parte de píxel que le toca.
+    fraccion = ((filas == entero[None, :] + 1) & (filas > pie[None, :]))
+    alfa_frac = np.where(fraccion, (liso - entero)[None, :] * 255, 0)
+    rgb = rgba[..., :3].astype(np.float32)
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+    lleno = alfa > 250
+    hasta_borde = distance_transform_edt(lleno)
+    # Los píxeles a medias toman el color del lleno más cercano (así no se pierden los
+    # detalles finos, como los barrotes, que no tienen «dentro»); de los llenos, solo los
+    # de la orilla (hasta 6 px, lo que ensucia ChatGPT) que tiran a magenta.
+    morado = lleno & (hasta_borde <= 6) & (np.minimum(r, b) - g > 6)
+    orilla = ((alfa > 0) & ~lleno) | morado
+    fuente = lleno & ~morado
+    _, (iy, ix) = distance_transform_edt(~fuente, return_indices=True)
+    sube = fraccion & (alfa_frac > rgba[..., 3])
+    cambia = hueco | orilla | sube
+    salida = rgba.copy()
+    salida[..., :3] = np.where(cambia[..., None], rgb[iy, ix], rgb).astype(np.uint8)
+    salida[..., 3] = np.where(hueco, 255, np.where(sube, alfa_frac, rgba[..., 3])).astype(np.uint8)
+    print(f"Borde: {int(hueco.sum())} px de pie rellenados, {int(orilla.sum())} px de orilla con el color de dentro")
+    return salida
 
 
 def iou(a, b):
@@ -175,7 +234,7 @@ def main():
     rgb = pint[..., :3] * alfa_pint + render[..., :3] * (1 - alfa_pint)
     if a.luz == "render":
         rgb = luz_del_render(rgb, render[..., :3])
-    resultado = np.dstack([rgb, render[..., 3]]).astype(np.uint8)
+    resultado = pulir_borde(np.dstack([rgb, render[..., 3]]).astype(np.uint8))
 
     # Comprobación: render, pintura y silueta de la maqueta encima.
     comp = Image.new("RGB", (ancho * 3 + 20, alto), (40, 40, 40))

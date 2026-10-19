@@ -127,6 +127,13 @@
      643.13,
      1392.54
     ]
+   },
+   "sombra": {
+    "imagen": "res://arte/piezas/barriles_sombra.png",
+    "ancla": [
+     94.2,
+     99.7
+    ]
    }
   },
   "cadaver": {
@@ -348,6 +355,13 @@
     "ancla": [
      1209.07,
      951.18
+    ]
+   },
+   "sombra": {
+    "imagen": "res://arte/piezas/carro_sombra.png",
+    "ancla": [
+     389.8,
+     241.3
     ]
    }
   },
@@ -674,6 +688,13 @@
      140.73,
      1136.88
     ]
+   },
+   "sombra": {
+    "imagen": "res://arte/piezas/casa_1_sombra.png",
+    "ancla": [
+     98.4,
+     208.5
+    ]
    }
   },
   "casa_2": {
@@ -982,6 +1003,13 @@
     "ancla": [
      140.52,
      1155.51
+    ]
+   },
+   "sombra": {
+    "imagen": "res://arte/piezas/casa_2_sombra.png",
+    "ancla": [
+     98.2,
+     208.5
     ]
    }
   },
@@ -1303,6 +1331,13 @@
     "ancla": [
      140.87,
      1182.76
+    ]
+   },
+   "sombra": {
+    "imagen": "res://arte/piezas/casa_3_sombra.png",
+    "ancla": [
+     98.7,
+     208.5
     ]
    }
   },
@@ -1775,6 +1810,13 @@
     "ancla": [
      140.18,
      1155.51
+    ]
+   },
+   "sombra": {
+    "imagen": "res://arte/piezas/casa_4_sombra.png",
+    "ancla": [
+     97.9,
+     208.5
     ]
    }
   }

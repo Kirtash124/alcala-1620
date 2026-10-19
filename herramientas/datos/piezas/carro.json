@@ -171,5 +171,12 @@
    1209.07,
    951.18
   ]
+ },
+ "sombra": {
+  "imagen": "res://arte/piezas/carro_sombra.png",
+  "ancla": [
+   389.8,
+   241.3
+  ]
  }
 }
