@@ -14,7 +14,9 @@ Qué hace:
      Esteban con la casa de la hornacina). Con --luz render se queda con la textura
      de la pintura y toma del render la luz y el color de conjunto, por si alguna
      pieza se desvía demasiado de la noche de las demás.
-  5. Guarda arte/piezas/<id>.png, copia la pintura original en
+  5. Si la casa está apuntada en herramientas/datos/soportales.json, iguala el color del
+     suelo de su soportal con el de sus vecinas (ver igualar_soportales.py).
+  6. Guarda arte/piezas/<id>.png, copia la pintura original en
      arte/entrada/piezas/<id>_pintada.png y deja una imagen de comprobación en
      pruebas/salida/piezas/<id>_comprobacion.png. El render sin pintar está siempre en
      herramientas/datos/piezas/<id>_render.png.
@@ -196,6 +198,9 @@ def main():
               "Pide a ChatGPT que no mueva ni cambie el contorno, o usa --forzar.")
         sys.exit(1)
     Image.fromarray(resultado).save(ruta_juego, optimize=True)
+    # Si el suelo del soportal de esta casa se igualó con el de sus vecinas, se rehace.
+    from igualar_soportales import reaplicar
+    reaplicar(a.pieza)
     # Se guarda la pintura original: si la pieza se vuelve a renderizar, basta con
     # pasar otra vez esta herramienta con ella.
     original = RAIZ / "arte/entrada/piezas" / f"{a.pieza}_pintada.png"

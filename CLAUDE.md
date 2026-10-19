@@ -29,6 +29,7 @@ xvfb-run -a -s "-screen 0 1920x1080x24" $G --path . --rendering-driver opengl3 \
 python3 herramientas/kit_calle_mayor.py [--solo casa_3] [--rapido] [--sin-render]   # modela y renderiza piezas y suelo (~1 h)
 python3 herramientas/generar_calle_mayor.py         # escena CalleMayor.tscn a partir de las fichas
 python3 herramientas/procesar_pieza.py casa_3 pintada.png   # mete una pieza repintada por ChatGPT
+python3 herramientas/igualar_soportales.py casa_2 --como casa_1 casa_3   # iguala el suelo de un soportal
 python3 herramientas/arte_provisional.py            # personajes y objetos provisionales
 python3 herramientas/plantillas_arte.py              # plantillas para ChatGPT (docs/arte)
 python3 herramientas/procesar_arte.py fondo|figura entrada.png salida.png
